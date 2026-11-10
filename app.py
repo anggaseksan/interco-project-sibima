@@ -5,6 +5,7 @@ from datetime import datetime
 
 st.set_page_config(page_title="SIBIMA Performance Dashboard", layout="wide", page_icon="📈")
 
+# Fungsi load data dengan cache dinamis
 @st.cache_data(ttl=10)
 def load_data(url, header_row=0):
     try:
@@ -54,16 +55,32 @@ if mode == "🏢 Central Procurement & Interco":
         if pilih_cust != "Semua": df_order_filtered = df_order_filtered[df_order_filtered['CUSTOMER'] == pilih_cust]
         if pilih_no: df_order_filtered = df_order_filtered[df_order_filtered.astype(str).apply(lambda x: x.str.contains(pilih_no, case=False, na=False)).any(axis=1)]
 
-        # --- PEMBERSIHAN DATA NOMINAL HARGA AGAR TIDAK JADI 0 ---
+        # --- PEMBERSIHAN DATA NOMINAL HARGA AGAR AKURAT ---
         price_col = next((c for c in df_order_filtered.columns if 'TOTAL HARGA JUAL' in str(c).upper() or 'HARGA JUAL' in str(c).upper()), None)
         if price_col:
-            # Mengubah format string ber-Rp atau titik/koma menjadi angka float
-            df_order_filtered['PRICE_CLEAN'] = pd.to_numeric(
-                df_order_filtered[price_col].astype(str).str.replace('Rp', '', case=False).str.replace('.', '', regex=False).str.replace(',', '.', regex=False).str.strip(),
-                errors='coerce'
-            ).fillna(0)
+            def clean_price(val):
+                if pd.isna(val): return 0.0
+                s = str(val).replace('Rp', '').replace('idr', '').strip()
+                if ',' in s and '.' in s:
+                    if s.find('.') < s.find(','):
+                        s = s.replace('.', '').replace(',', '.')
+                    else:
+                        s = s.replace(',', '')
+                elif ',' in s:
+                    if len(s.split(',')[-1]) == 3:
+                        s = s.replace(',', '')
+                    else:
+                        s = s.replace(',', '.')
+                elif s.count('.') > 1:
+                    s = s.replace('.', '', s.count('.') - 1)
+                try:
+                    return float(s)
+                except:
+                    return 0.0
+
+            df_order_filtered['PRICE_CLEAN'] = df_order_filtered[price_col].apply(clean_price)
         else:
-            df_order_filtered['PRICE_CLEAN'] = 0
+            df_order_filtered['PRICE_CLEAN'] = 0.0
 
         st.divider()
         st.write("### 📊 Detail Transaksi")
@@ -160,6 +177,7 @@ elif mode == "🏗️ Project (YTP Tahap 2 & 3)":
 
     with tab_p2:
         st.subheader("📦 Section 1: Fulfillment Material Lokal (YTP Tahap 3)")
+        
         if not df_matloc.empty:
             if 'BATCH/GROUP' in df_matloc.columns:
                 df_matloc['BATCH/GROUP CLEAN'] = pd.to_numeric(df_matloc['BATCH/GROUP'], errors='coerce').fillna(df_matloc['BATCH/GROUP']).astype(str).str.replace('.0', '', regex=False)
@@ -177,6 +195,7 @@ elif mode == "🏗️ Project (YTP Tahap 2 & 3)":
                     if 'DO' in str(col).upper() and pd.notna(row[col]) and str(row[col]).strip() != '' and str(row[col]).upper() != 'NONE':
                         do_val = row[col]
                         break
+                
                 if po_val and do_val: return "Selesai (DO Terbit)"
                 elif po_val and not do_val: return "Diproses (Sudah PO)"
                 else: return "Belum Dipesan"
@@ -197,9 +216,12 @@ elif mode == "🏗️ Project (YTP Tahap 2 & 3)":
                 pilih_material = st.selectbox("🔍 Filter Jenis Material (Tahap 3):", list_mat, key="f_mat_3")
 
             df_mat_filtered = df_matloc.copy()
-            if pilih_group != "Semua Group": df_mat_filtered = df_mat_filtered[df_mat_filtered['BATCH/GROUP CLEAN'] == pilih_group]
-            if pilih_wilayah != "Semua Wilayah" and wil_col: df_mat_filtered = df_mat_filtered[df_mat_filtered[wil_col] == pilih_wilayah]
-            if pilih_material != "Semua Material" and mat_col: df_mat_filtered = df_mat_filtered[df_mat_filtered[mat_col] == pilih_material]
+            if pilih_group != "Semua Group":
+                df_mat_filtered = df_mat_filtered[df_mat_filtered['BATCH/GROUP CLEAN'] == pilih_group]
+            if pilih_wilayah != "Semua Wilayah" and wil_col:
+                df_mat_filtered = df_mat_filtered[df_mat_filtered[wil_col] == pilih_wilayah]
+            if pilih_material != "Semua Material" and mat_col:
+                df_mat_filtered = df_mat_filtered[df_mat_filtered[mat_col] == pilih_material]
 
             st.divider()
             v1, v2 = st.columns([1, 2])
@@ -207,21 +229,31 @@ elif mode == "🏗️ Project (YTP Tahap 2 & 3)":
                 st.write("**Proporsi Status (Tahap 3)**")
                 status_counts = df_mat_filtered['FULFILLMENT STATUS'].value_counts().reset_index()
                 status_counts.columns = ['Status', 'Jumlah Item']
-                donut_mat = alt.Chart(status_counts).mark_arc(innerRadius=60).encode(theta=alt.Theta(field="Jumlah Item", type="quantitative"), color=alt.Color(field="Status", type="nominal", scale=alt.Scale(domain=['Selesai (DO Terbit)', 'Diproses (Sudah PO)', 'Belum Dipesan'], range=['#2ca02c', '#ff7f0e', '#d62728'])), tooltip=['Status', 'Jumlah Item']).properties(height=300)
+                donut_mat = alt.Chart(status_counts).mark_arc(innerRadius=60).encode(
+                    theta=alt.Theta(field="Jumlah Item", type="quantitative"),
+                    color=alt.Color(field="Status", type="nominal", scale=alt.Scale(domain=['Selesai (DO Terbit)', 'Diproses (Sudah PO)', 'Belum Dipesan'], range=['#2ca02c', '#ff7f0e', '#d62728'])),
+                    tooltip=['Status', 'Jumlah Item']
+                ).properties(height=300)
                 st.altair_chart(donut_mat, use_container_width=True)
+            
             with v2:
                 st.write("**Detail Material Tahap 3**")
                 st.dataframe(df_mat_filtered, use_container_width=True, height=300)
 
             st.write("#### 🚨 Belum Dipesan (Tahap 3)")
             df_belum = df_mat_filtered[df_mat_filtered['FULFILLMENT STATUS'] == 'Belum Dipesan']
-            if not df_belum.empty: st.dataframe(df_belum, use_container_width=True, height=250)
-            else: st.success("🎉 Semua material Tahap 3 sudah dipesan.")
+            if not df_belum.empty:
+                st.dataframe(df_belum, use_container_width=True, height=250)
+            else:
+                st.success("🎉 Semua material Tahap 3 sudah dipesan.")
         else:
             st.error("Data YTP Tahap 3 kosong.")
 
         st.markdown("---")
+
+        # --- SECTION 2: YTP TAHAP 2 ---
         st.subheader("📦 Section 2: Analisis Operasional (YTP Tahap 2)")
+        
         if not df_ytp2.empty:
             def cek_status_ytp2(row):
                 po_val = None
@@ -234,11 +266,13 @@ elif mode == "🏗️ Project (YTP Tahap 2 & 3)":
                     if 'DO' in str(col).upper() and pd.notna(row[col]) and str(row[col]).strip() != '' and str(row[col]).upper() != 'NONE':
                         do_val = row[col]
                         break
+                
                 if po_val and do_val: return "Selesai (DO Terbit)"
                 elif po_val and not do_val: return "Diproses (Sudah PO)"
                 else: return "Belum Dipesan"
 
             df_ytp2['FULFILLMENT STATUS'] = df_ytp2.apply(cek_status_ytp2, axis=1)
+
             col_2f1, col_2f2 = st.columns(2)
             with col_2f1:
                 cust_col_2 = next((c for c in df_ytp2.columns if 'CUSTOMER' in str(c).upper()), None)
@@ -249,31 +283,58 @@ elif mode == "🏗️ Project (YTP Tahap 2 & 3)":
                 pilih_stat_2 = st.selectbox("🔍 Filter Status (Tahap 2):", list_stat_2)
 
             df_ytp2_filtered = df_ytp2.copy()
-            if pilih_cust_2 != "Semua Customer" and cust_col_2: df_ytp2_filtered = df_ytp2_filtered[df_ytp2_filtered[cust_col_2] == pilih_cust_2]
-            if pilih_stat_2 != "Semua Status": df_ytp2_filtered = df_ytp2_filtered[df_ytp2_filtered['FULFILLMENT STATUS'] == pilih_stat_2]
+            if pilih_cust_2 != "Semua Customer" and cust_col_2:
+                df_ytp2_filtered = df_ytp2_filtered[df_ytp2_filtered[cust_col_2] == pilih_cust_2]
+            if pilih_stat_2 != "Semua Status":
+                df_ytp2_filtered = df_ytp2_filtered[df_ytp2_filtered['FULFILLMENT STATUS'] == pilih_stat_2]
+
+            st.write("**Detail Data YTP Tahap 2**")
             st.dataframe(df_ytp2_filtered, use_container_width=True, height=350)
         else:
             st.info("Data YTP Tahap 2 kosong.")
 
+    # ----------------------------------------
+    # TAB 3: MONITORING VENDOR (OUTSTANDING SUPPLY)
+    # ----------------------------------------
     with tab_p3:
         st.write("### 📋 Monitoring Outstanding Supply Vendor (YTP Tahap 2 & 3)")
-        df_out_3 = df_matloc[df_matloc.apply(lambda r: cek_status_mat(r) != "Selesai (DO Terbit)", axis=1)].copy() if not df_matloc.empty else pd.DataFrame()
-        if not df_out_3.empty: df_out_3['SUMBER PROJECT'] = 'YTP Tahap 3'
-        
-        df_out_2 = df_ytp2[df_ytp2.apply(lambda r: cek_status_ytp2(r) != "Selesai (DO Terbit)", axis=1)].copy() if not df_ytp2.empty else pd.DataFrame()
-        if not df_out_2.empty: df_out_2['SUMBER PROJECT'] = 'YTP Tahap 2'
+        st.markdown("Menampilkan daftar seluruh barang dari Project YTP Tahap 2 dan 3 yang status pengirimannya dari vendor masih *outstanding* (belum diterima / belum selesai).")
+
+        df_out_3 = pd.DataFrame()
+        if not df_matloc.empty:
+            df_out_3 = df_matloc[df_matloc.apply(lambda r: cek_status_mat(r) != "Selesai (DO Terbit)", axis=1)].copy()
+            df_out_3['SUMBER PROJECT'] = 'YTP Tahap 3'
+
+        df_out_2 = pd.DataFrame()
+        if not df_ytp2.empty:
+            df_out_2 = df_ytp2[df_ytp2.apply(lambda r: cek_status_ytp2(r) != "Selesai (DO Terbit)", axis=1)].copy()
+            df_out_2['SUMBER PROJECT'] = 'YTP Tahap 2'
 
         df_combined_out = pd.concat([df_out_3, df_out_2], ignore_index=True)
+
         if not df_combined_out.empty:
-            vend_col = next((c for c in df_combined_out.columns if 'VENDOR' in str(c).upper()), None)
+            vend_col = next((c for c in df_combined_out.columns if 'VENDOR' in str(c).upper() and 'NAMA' in str(c).upper()), None)
+            if not vend_col:
+                vend_col = next((c for c in df_combined_out.columns if 'VENDOR' in str(c).upper()), None)
+
             list_vend = ["Semua Vendor"] + sorted([str(x) for x in df_combined_out[vend_col].dropna().unique()]) if vend_col else ["Semua Vendor"]
             pilih_vend_mon = st.selectbox("🔍 Filter Berdasarkan Nama Vendor:", list_vend)
+
             if pilih_vend_mon != "Semua Vendor" and vend_col:
                 df_combined_out = df_combined_out[df_combined_out[vend_col].astype(str) == pilih_vend_mon]
+
             st.metric("Total Item Outstanding Supply", len(df_combined_out))
             st.dataframe(df_combined_out, use_container_width=True, height=450)
+
+            csv_mon = df_combined_out.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Download Laporan Outstanding Vendor (CSV)",
+                data=csv_mon,
+                file_name="Outstanding_Supply_Vendor.csv",
+                mime="text/csv"
+            )
         else:
-            st.success("🎉 Seluruh supply sudah selesai.")
+            st.success("🎉 Luar biasa! Seluruh supply dari vendor untuk YTP Tahap 2 & 3 sudah selesai (DO Terbit).")
 
     with tab_p4:
         st.write("### 🚢 Master Data Pengiriman Prefab (China -> Site)")
@@ -281,4 +342,5 @@ elif mode == "🏗️ Project (YTP Tahap 2 & 3)":
 
     with tab_p5:
         st.write("### 🧱 Master Data Kesiapan Barak & YTP 2")
+        st.write("**Progress Lapangan (Kontraktor Barak):**")
         st.dataframe(df_barak, use_container_width=True, height=500)
