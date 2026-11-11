@@ -5,7 +5,6 @@ from datetime import datetime
 
 st.set_page_config(page_title="SIBIMA Performance Dashboard", layout="wide", page_icon="📈")
 
-# Fungsi load data dengan cache dinamis
 @st.cache_data(ttl=10)
 def load_data(url, header_row=0):
     try:
@@ -55,7 +54,6 @@ if mode == "🏢 Central Procurement & Interco":
         if pilih_cust != "Semua": df_order_filtered = df_order_filtered[df_order_filtered['CUSTOMER'] == pilih_cust]
         if pilih_no: df_order_filtered = df_order_filtered[df_order_filtered.astype(str).apply(lambda x: x.str.contains(pilih_no, case=False, na=False)).any(axis=1)]
 
-        # --- PEMBERSIHAN DATA NOMINAL HARGA AGAR AKURAT ---
         price_col = next((c for c in df_order_filtered.columns if 'TOTAL HARGA JUAL' in str(c).upper() or 'HARGA JUAL' in str(c).upper()), None)
         if price_col:
             def clean_price(val):
@@ -92,12 +90,15 @@ if mode == "🏢 Central Procurement & Interco":
         balance_outstanding = outstanding_df['PRICE_CLEAN'].sum()
         top_kategori = df_order_filtered['KATEGORI'].mode()[0] if 'KATEGORI' in df_order_filtered.columns and not df_order_filtered['KATEGORI'].empty else "Tidak Ada"
 
-        m1, m2, m3, m4, m5 = st.columns(5)
-        m1.metric("Total Order Nominal", f"Rp {total_revenue:,.0f}".replace(',', '.'))
-        m2.metric("Outstanding Balance", f"Rp {balance_outstanding:,.0f}".replace(',', '.'))
-        m3.metric("Total Transaksi", total_transaksi)
-        m4.metric("Total Item QTY", f"{total_item:,.0f}")
-        m5.metric("Kategori Terbanyak", top_kategori)
+        # Membagi metrik menjadi 2 baris agar angka nominalnya tidak terpotong (luas area lebih lega)
+        r1_c1, r1_c2, r1_c3 = st.columns(3)
+        r1_c1.metric("Total Order Nominal", f"Rp {total_revenue:,.0f}".replace(',', '.'))
+        r1_c2.metric("Outstanding Balance", f"Rp {balance_outstanding:,.0f}".replace(',', '.'))
+        r1_c3.metric("Total Transaksi", total_transaksi)
+
+        r2_c1, r2_c2 = st.columns(2)
+        r2_c1.metric("Total Item QTY", f"{total_item:,.0f}")
+        r2_c2.metric("Kategori Terbanyak", top_kategori)
         
         st.divider()
         v_col1, v_col2 = st.columns(2)
