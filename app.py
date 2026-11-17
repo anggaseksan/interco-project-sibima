@@ -104,11 +104,9 @@ if mode == "🏢 Central Procurement & Interco":
                 df_order_filtered['HPP_CLEAN'] = 0.0
 
             st.divider()
-            st.write("### 📊 Detail Transaksi & Keuangan")
+            st.write("### 📊 Detail Transaksi & Keuangan (Komersial Eksternal)")
             
-            # Filter khusus untuk Revenue & HPP:
-            # 1. Status TIDAK BOLEH 'CANCEL' atau 'PENDING'
-            # 2. Kategori/Customer TIDAK BOLEH mengandung kata 'SIBIMA'
+            # Filter khusus untuk metrik bersih (Mengecualikan Cancel, Pending, dan SIBIMA)
             if kat_col_order:
                 valid_revenue_df = df_order_filtered[
                     (~df_order_filtered['STATUS'].astype(str).str.upper().isin(['CANCEL', 'PENDING'])) &
@@ -123,8 +121,9 @@ if mode == "🏢 Central Procurement & Interco":
             total_revenue_exc = total_revenue_inc / 1.11  
             total_hpp_exc = valid_revenue_df['HPP_CLEAN'].sum()
             
-            total_transaksi = len(df_order_filtered)
-            total_item = df_order_filtered['QTY_CLEAN'].sum()
+            # Total Transaksi & QTY sekarang murni dari transaksi komersial valid
+            total_transaksi = len(valid_revenue_df)
+            total_item = valid_revenue_df['QTY_CLEAN'].sum()
             
             # Outstanding Balance (Pesanan belum diterima, bukan Cancel, dan bukan SIBIMA)
             if kat_col_order:
@@ -138,7 +137,7 @@ if mode == "🏢 Central Procurement & Interco":
                 ]
                 
             balance_outstanding = outstanding_df['PRICE_CLEAN'].sum()
-            top_kategori = df_order_filtered[kat_col_order].mode()[0] if kat_col_order and not df_order_filtered[kat_col_order].empty else "Tidak Ada"
+            top_kategori = valid_revenue_df[kat_col_order].mode()[0] if kat_col_order and not valid_revenue_df[kat_col_order].empty else "Tidak Ada"
 
             m1, m2, m3, m4 = st.columns(4)
             m1.metric("Penjualan (Exclude PPN)", f"Rp {total_revenue_exc:,.0f}".replace(',', '.'))
@@ -287,7 +286,7 @@ if mode == "🏢 Central Procurement & Interco":
 
             vend_col_in = next((c for c in df_interco_out.columns if 'VENDOR' in str(c).upper()), None)
             
-            list_v_in = ["Semua Vendor"] + sorted([str(x) for x in df_interco_out[vend_col_in].dropna().unique()]) if vend_col_in else ["Semua Vendor"]
+            list_v_in = ["Semua Vendor"] + sorted([str(x) for x in df_interco_out[vend_col_in].dropna().unique()]) if vend_col_in else ["SemuaVendor"]
             pilih_v_in = st.selectbox("🔍 Filter Berdasarkan Vendor Interco:", list_v_in)
 
             if pilih_v_in != "Semua Vendor" and vend_col_in:
