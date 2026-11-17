@@ -83,19 +83,25 @@ if mode == "🏢 Central Procurement & Interco":
                 try: return float(s)
                 except: return 0.0
 
-            # Deteksi Kolom QTY, Harga, HPP, dan No PO Customer
+            # Deteksi Kolom Secara Spesifik
             qty_col = next((c for c in df_order_filtered.columns if 'QTY' in str(c).upper() or 'QUANTITY' in str(c).upper()), None)
-            price_col = next((c for c in df_order_filtered.columns if any(k in str(c).upper() for k in ['HARGA JUAL', 'TOTAL HARGA', 'GRAND TOTAL', 'TOTAL', 'PRICE'])), None)
-            unit_price_col = next((c for c in df_order_filtered.columns if any(k in str(c).upper() for k in ['SATUAN', 'UNIT PRICE', 'HARGA SATUAN'])), None)
-            hpp_col = next((c for c in df_order_filtered.columns if any(k in str(c).upper() for k in ['HPP', 'MODAL', 'COST'])), None)
+            
+            # Harga Jual (Exclude PPN) diambil dari Total Harga Jual
+            price_col = next((c for c in df_order_filtered.columns if 'TOTAL HARGA JUAL' in str(c).upper() or 'HARGA JUAL' in str(c).upper() or ('HARGA' in str(c).upper() and 'JUAL' in str(c).upper())), None)
+            if not price_col:
+                price_col = next((c for c in df_order_filtered.columns if any(k in str(c).upper() for k in ['GRAND TOTAL', 'TOTAL HARGA', 'TOTAL'])), None)
+
+            # HPP diambil khusus dari Total Harga Beli
+            hpp_col = next((c for c in df_order_filtered.columns if 'TOTAL HARGA BELI' in str(c).upper() or 'HARGA BELI' in str(c).upper() or ('BELI' in str(c).upper() and 'HARGA' in str(c).upper())), None)
+            if not hpp_col:
+                hpp_col = next((c for c in df_order_filtered.columns if any(k in str(c).upper() for k in ['HPP', 'MODAL', 'COST'])), None)
+
             po_cust_col = next((c for c in df_order_filtered.columns if any(k in str(c).upper() for k in ['NO PO CUSTOMER', 'PO CUSTOMER', 'NOMOR PO'])), None)
 
             df_order_filtered['QTY_CLEAN'] = pd.to_numeric(df_order_filtered[qty_col], errors='coerce').fillna(0) if qty_col else 1.0
 
             if price_col:
                 df_order_filtered['PRICE_CLEAN'] = df_order_filtered[price_col].apply(clean_price)
-            elif unit_price_col and qty_col:
-                df_order_filtered['PRICE_CLEAN'] = df_order_filtered['QTY_CLEAN'] * df_order_filtered[unit_price_col].apply(clean_price)
             else:
                 df_order_filtered['PRICE_CLEAN'] = 0.0
 
@@ -122,10 +128,10 @@ if mode == "🏢 Central Procurement & Interco":
                 ]
                 df_sibima_internal = pd.DataFrame()
 
-            # Metrik Keuangan (Harga di sheet = Exclude PPN, Hitung Include PPN dengan dikali 1.11)
-            total_revenue_exc = df_komersial['PRICE_CLEAN'].sum()
-            total_revenue_inc = total_revenue_exc * 1.11  
-            total_hpp_exc = df_komersial['HPP_CLEAN'].sum()
+            # Metrik Keuangan
+            total_revenue_exc = df_komersial['PRICE_CLEAN'].sum()  # Exclude PPN dari Total Harga Jual
+            total_revenue_inc = total_revenue_exc * 1.11           # Include PPN (+11%)
+            total_hpp_exc = df_komersial['HPP_CLEAN'].sum()        # HPP dari Total Harga Beli
             
             # Total Transaksi dihitung unik berdasarkan Nomor PO Customer
             if po_cust_col and not df_komersial[po_cust_col].dropna().empty:
@@ -135,17 +141,21 @@ if mode == "🏢 Central Procurement & Interco":
                 
             total_item = df_komersial['QTY_CLEAN'].sum()
             
-            # Outstanding Balance Komersial (berdasarkan Exclude PPN)
-            if kat_col_order:
-                outstanding_df = df_order_filtered[
-                    (~df_order_filtered['STATUS'].astype(str).str.upper().isin(['SUDAH DITERIMA', 'CANCEL'])) &
-                    (~df_order_filtered[kat_col_order].astype(str).str.upper().str.contains('SIBIMA'))
-                ]
+            # Outstanding Balance (Barang belum diterima user atas PO-nya, exclude Cancel & Sudah Diterima)
+            status_col = next((c for c in df_order_filtered.columns if 'STATUS' in str(c).upper()), None)
+            if status_col:
+                if kat_col_order:
+                    outstanding_df = df_order_filtered[
+                        (~df_order_filtered[status_col].astype(str).str.upper().isin(['SUDAH DITERIMA', 'CANCEL'])) &
+                        (~df_order_filtered[kat_col_order].astype(str).str.upper().str.contains('SIBIMA'))
+                    ]
+                else:
+                    outstanding_df = df_order_filtered[
+                        (~df_order_filtered[status_col].astype(str).str.upper().isin(['SUDAH DITERIMA', 'CANCEL']))
+                    ]
             else:
-                outstanding_df = df_order_filtered[
-                    (~df_order_filtered['STATUS'].astype(str).str.upper().isin(['SUDAH DITERIMA', 'CANCEL']))
-                ]
-                
+                outstanding_df = pd.DataFrame(columns=df_order_filtered.columns)
+
             balance_outstanding = outstanding_df['PRICE_CLEAN'].sum()
             top_kategori = df_komersial[kat_col_order].mode()[0] if kat_col_order and not df_komersial[kat_col_order].empty else "Tidak Ada"
 
