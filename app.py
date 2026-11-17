@@ -53,16 +53,20 @@ if mode == "🏢 Central Procurement & Interco":
             min_date = df_rfq['TANGGAL RFQ'].min().date() if not df_rfq['TANGGAL RFQ'].isnull().all() else datetime.today().date()
             max_date = df_rfq['TANGGAL RFQ'].max().date() if not df_rfq['TANGGAL RFQ'].isnull().all() else datetime.today().date()
             
+            # Deteksi kolom kategori untuk filter customer ringkas
+            kat_col = next((c for c in df_order.columns if 'KATEGORI' in str(c).upper()), None)
+            list_cust_options = ["Semua"] + sorted(list(df_order[kat_col].dropna().unique())) if kat_col and not df_order[kat_col].dropna().empty else ["Semua"]
+
             st.write("### Filter Dashboard Interco")
             f_col1, f_col2, f_col3, f_col4 = st.columns(4)
             with f_col1: date_range = st.date_input("Select Date Range 📅", [min_date, max_date], key="i_date")
             with f_col2: pilih_status = st.selectbox("Cari Status 🔍", ["Semua"] + list(df_order['STATUS'].dropna().unique()), key="i_stat")
-            with f_col3: pilih_cust = st.selectbox("Pilih Customer 👤", ["Semua"] + list(df_order['CUSTOMER'].dropna().unique()), key="i_cust")
+            with f_col3: pilih_cust = st.selectbox("Pilih Customer (Kategori) 👤", list_cust_options, key="i_cust")
             with f_col4: pilih_no = st.text_input("Cari Nomor Transaksi (SO/PO) 🔍", key="i_no")
 
             df_order_filtered = df_order.copy()
             if pilih_status != "Semua": df_order_filtered = df_order_filtered[df_order_filtered['STATUS'] == pilih_status]
-            if pilih_cust != "Semua": df_order_filtered = df_order_filtered[df_order_filtered['CUSTOMER'] == pilih_cust]
+            if pilih_cust != "Semua" and kat_col: df_order_filtered = df_order_filtered[df_order_filtered[kat_col] == pilih_cust]
             if pilih_no: df_order_filtered = df_order_filtered[df_order_filtered.astype(str).apply(lambda x: x.str.contains(pilih_no, case=False, na=False)).any(axis=1)]
 
             price_col = next((c for c in df_order_filtered.columns if 'TOTAL HARGA JUAL' in str(c).upper() or 'HARGA JUAL' in str(c).upper()), None)
@@ -91,7 +95,7 @@ if mode == "🏢 Central Procurement & Interco":
             
             outstanding_df = df_order_filtered[df_order_filtered['STATUS'].astype(str).str.upper() != 'SUDAH DITERIMA']
             balance_outstanding = outstanding_df['PRICE_CLEAN'].sum()
-            top_kategori = df_order_filtered['KATEGORI'].mode()[0] if 'KATEGORI' in df_order_filtered.columns and not df_order_filtered['KATEGORI'].empty else "Tidak Ada"
+            top_kategori = df_order_filtered[kat_col].mode()[0] if kat_col and not df_order_filtered[kat_col].empty else "Tidak Ada"
 
             r1_c1, r1_c2, r1_c3 = st.columns(3)
             r1_c1.metric("Total Order Nominal", f"Rp {total_revenue:,.0f}".replace(',', '.'))
@@ -121,7 +125,7 @@ if mode == "🏢 Central Procurement & Interco":
                     st.altair_chart(bar_chart, use_container_width=True)
 
             st.divider()
-            # --- TAMBAHAN BARU: PROPORSI RFQ PER USER / PIC ---
+            # Proporsi RFQ per User / Sales (PIC)
             st.write("### 👥 Proporsi & Beban Kerja RFQ per User / Sales (PIC)")
             pic_rfq_col = next((c for c in df_rfq.columns if any(k in str(c).upper() for k in ['PIC', 'USER', 'SALES', 'NAMA'])), None)
             if pic_rfq_col:
