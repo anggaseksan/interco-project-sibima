@@ -120,6 +120,32 @@ if mode == "🏢 Central Procurement & Interco":
                     bar_chart = alt.Chart(vendor_counts).mark_bar().encode(x=alt.X('Total Transaksi:Q', title='Jumlah Transaksi'), y=alt.Y('Vendor:N', sort='-x', title='Nama Vendor'), color=alt.Color('Vendor:N', legend=None), tooltip=['Vendor', 'Total Transaksi']).properties(height=300)
                     st.altair_chart(bar_chart, use_container_width=True)
 
+            st.divider()
+            # --- TAMBAHAN BARU: PROPORSI RFQ PER USER / PIC ---
+            st.write("### 👥 Proporsi & Beban Kerja RFQ per User / Sales (PIC)")
+            pic_rfq_col = next((c for c in df_rfq.columns if any(k in str(c).upper() for k in ['PIC', 'USER', 'SALES', 'NAMA'])), None)
+            if pic_rfq_col:
+                pic_counts = df_rfq[pic_rfq_col].value_counts().reset_index()
+                pic_counts.columns = ['User / PIC', 'Jumlah RFQ']
+
+                p_col1, p_col2 = st.columns([1, 2])
+                with p_col1:
+                    donut_pic = alt.Chart(pic_counts).mark_arc(innerRadius=50).encode(
+                        theta=alt.Theta(field="Jumlah RFQ", type="quantitative"),
+                        color=alt.Color(field="User / PIC", type="nominal"),
+                        tooltip=['User / PIC', 'Jumlah RFQ']
+                    ).properties(height=300)
+                    st.altair_chart(donut_pic, use_container_width=True)
+                with p_col2:
+                    bar_pic = alt.Chart(pic_counts).mark_bar(color='#1f77b4').encode(
+                        x=alt.X('Jumlah RFQ:Q', title='Total RFQ Diterima'),
+                        y=alt.Y('User / PIC:N', sort='-x', title='Nama User / Sales (PIC)'),
+                        tooltip=['User / PIC', 'Jumlah RFQ']
+                    ).properties(height=300)
+                    st.altair_chart(bar_pic, use_container_width=True)
+            else:
+                st.info("Kolom PIC / User / Sales tidak ditemukan di Master RFQ.")
+
     # --- TAB 2: MONITORING RFQ (PENDING & KENDALA) ---
     with tab_i2:
         st.write("### 🔍 Monitoring RFQ: Belum Dikerjakan & Kendala")
