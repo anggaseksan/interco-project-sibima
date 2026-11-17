@@ -38,7 +38,7 @@ if mode == "🏢 Central Procurement & Interco":
     df_rfq = load_data(URL_RFQ, header_row=1)
     df_order = load_data(URL_ORDER, header_row=0)
 
-    # Pemisahan Tab Interco (Analisis Vendor dijadikan tab sendiri)
+    # Pemisahan Tab Interco
     tab_i1, tab_i2, tab_i3, tab_i4, tab_i5 = st.tabs([
         "📊 Overview & Detail Transaksi", 
         "🔍 Monitoring RFQ (Pending & Kendala)", 
@@ -69,27 +69,35 @@ if mode == "🏢 Central Procurement & Interco":
             if pilih_cust != "Semua" and kat_col_order: df_order_filtered = df_order_filtered[df_order_filtered[kat_col_order] == pilih_cust]
             if pilih_no: df_order_filtered = df_order_filtered[df_order_filtered.astype(str).apply(lambda x: x.str.contains(pilih_no, case=False, na=False)).any(axis=1)]
 
+            # Fungsi pembersihan nilai numerik/harga
+            def clean_price(val):
+                if pd.isna(val): return 0.0
+                s = str(val).replace('Rp', '').replace('idr', '').strip()
+                if ',' in s and '.' in s:
+                    if s.find('.') < s.find(','): s = s.replace('.', '').replace(',', '.')
+                    else: s = s.replace(',', '')
+                elif ',' in s:
+                    if len(s.split(',')[-1]) == 3: s = s.replace(',', '')
+                    else: s = s.replace(',', '.')
+                elif s.count('.') > 1: s = s.replace('.', '', s.count('.') - 1)
+                try: return float(s)
+                except: return 0.0
+
+            # Deteksi Kolom Harga Jual & HPP
             price_col = next((c for c in df_order_filtered.columns if 'TOTAL HARGA JUAL' in str(c).upper() or 'HARGA JUAL' in str(c).upper()), None)
-            if price_col:
-                def clean_price(val):
-                    if pd.isna(val): return 0.0
-                    s = str(val).replace('Rp', '').replace('idr', '').strip()
-                    if ',' in s and '.' in s:
-                        if s.find('.') < s.find(','): s = s.replace('.', '').replace(',', '.')
-                        else: s = s.replace(',', '')
-                    elif ',' in s:
-                        if len(s.split(',')[-1]) == 3: s = s.replace(',', '')
-                        else: s = s.replace(',', '.')
-                    elif s.count('.') > 1: s = s.replace('.', '', s.count('.') - 1)
-                    try: return float(s)
-                    except: return 0.0
-                df_order_filtered['PRICE_CLEAN'] = df_order_filtered[price_col].apply(clean_price)
-            else:
-                df_order_filtered['PRICE_CLEAN'] = 0.0
+            hpp_col = next((c for c in df_order_filtered.columns if 'HPP' in str(c).upper() or 'MODAL' in str(c).upper()), None)
+
+            df_order_filtered['PRICE_CLEAN'] = df_order_filtered[price_col].apply(clean_price) if price_col else 0.0
+            df_order_filtered['HPP_CLEAN'] = df_order_filtered[hpp_col].apply(clean_price) if hpp_col else 0.0
 
             st.divider()
-            st.write("### 📊 Detail Transaksi")
-            total_revenue = df_order_filtered['PRICE_CLEAN'].sum()
+            st.write("### 📊 Detail Transaksi & Keuangan")
+            
+            total_revenue_inc = df_order_filtered['PRICE_CLEAN'].sum()
+            # Estimasi Exclude PPN (jika PPN umumnya 11%, atau jika ada kolom terpisah bisa disesuaikan)
+            total_revenue_exc = total_revenue_inc / 1.11  
+            total_hpp_exc = df_order_filtered['HPP_CLEAN'].sum()
+            
             total_transaksi = len(df_order_filtered)
             total_item = pd.to_numeric(df_order_filtered['QTY'], errors='coerce').sum() if 'QTY' in df_order_filtered.columns else 0
             
@@ -97,18 +105,21 @@ if mode == "🏢 Central Procurement & Interco":
             balance_outstanding = outstanding_df['PRICE_CLEAN'].sum()
             top_kategori = df_order_filtered[kat_col_order].mode()[0] if kat_col_order and not df_order_filtered[kat_col_order].empty else "Tidak Ada"
 
-            r1_c1, r1_c2, r1_c3 = st.columns(3)
-            r1_c1.metric("Total Order Nominal", f"Rp {total_revenue:,.0f}".replace(',', '.'))
-            r1_c2.metric("Outstanding Balance", f"Rp {balance_outstanding:,.0f}".replace(',', '.'))
-            r1_c3.metric("Total Transaksi", total_transaksi)
+            # Tampilan Metrik Baris 1 (Keuangan)
+            m1, m2, m3, m4 = st.columns(4)
+            m1.metric("Penjualan (Exclude PPN)", f"Rp {total_revenue_exc:,.0f}".replace(',', '.'))
+            m2.metric("Penjualan (Include PPN)", f"Rp {total_revenue_inc:,.0f}".replace(',', '.'))
+            m3.metric("HPP (Exclude PPN)", f"Rp {total_hpp_exc:,.0f}".replace(',', '.'))
+            m4.metric("Outstanding Balance", f"Rp {balance_outstanding:,.0f}".replace(',', '.'))
 
-            r2_c1, r2_c2 = st.columns(2)
-            r2_c1.metric("Total Item QTY", f"{total_item:,.0f}")
-            r2_c2.metric("Kategori Terbanyak", top_kategori)
+            # Tampilan Metrik Baris 2 (Operasional)
+            m5, m6, m7, m8 = st.columns(4)
+            m5.metric("Total Transaksi", total_transaksi)
+            m6.metric("Total Item QTY", f"{total_item:,.0f}")
+            m7.metric("Kategori Terbanyak", top_kategori)
             
             st.divider()
             
-            # Fokus Proporsi Status & Proporsi RFQ per Kategori Sales di sini
             st.write("#### 🍩 Proporsi Transaksi per Status & 🏢 Proporsi RFQ per Kategori Sales")
             v_col1, v_col2 = st.columns(2)
             with v_col1:
@@ -237,4 +248,32 @@ if mode == "🏢 Central Procurement & Interco":
             if status_col:
                 df_interco_out = df_order[df_order[status_col].astype(str).str.upper() != 'SUDAH DITERIMA'].copy()
             else:
-                df_interco_out = df_order
+                df_interco_out = df_order.copy()
+
+            vend_col_in = next((c for c in df_interco_out.columns if 'VENDOR' in str(c).upper()), None)
+            
+            list_v_in = ["Semua Vendor"] + sorted([str(x) for x in df_interco_out[vend_col_in].dropna().unique()]) if vend_col_in else ["Semua Vendor"]
+            pilih_v_in = st.selectbox("🔍 Filter Berdasarkan Vendor Interco:", list_v_in)
+
+            if pilih_v_in != "Semua Vendor" and vend_col_in:
+                df_interco_out = df_interco_out[df_interco_out[vend_col_in].astype(str) == pilih_v_in]
+
+            st.metric("Total Transaksi Interco Outstanding", len(df_interco_out))
+            st.dataframe(df_interco_out, use_container_width=True, height=450)
+
+            csv_in_out = df_interco_out.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Download Laporan Outstanding Interco (CSV)",
+                data=csv_in_out,
+                file_name="Outstanding_Interco_Vendor.csv",
+                mime="text/csv"
+            )
+        else:
+            st.warning("Data Master Order kosong.")
+
+# ==========================================
+# MODE 2: PROJECT YTP (Tahap 2 & 3) [DI-HOLD SEMENTARA]
+# ==========================================
+elif mode == "🏗️ Project (YTP Tahap 2 & 3)":
+    st.title("🏗️ DASHBOARD ANALITIK PROJECT (YTP)")
+    st.info("Mode Project YTP sedang di-hold sementara sesuai permintaan. Silakan gunakan menu Central Procurement & Interco.")
