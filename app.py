@@ -55,18 +55,24 @@ if mode == "🏢 Central Procurement & Interco":
             max_date = df_rfq['TANGGAL RFQ'].max().date() if not df_rfq['TANGGAL RFQ'].isnull().all() else datetime.today().date()
             
             kat_col_order = next((c for c in df_order.columns if 'KATEGORI' in str(c).upper()), None)
-            list_cust_options = ["Semua"] + sorted(list(df_order[kat_col_order].dropna().unique())) if kat_col_order and not df_order[kat_col_order].dropna().empty else ["Semua"]
+            list_cust_options = sorted(list(df_order[kat_col_order].dropna().unique())) if kat_col_order and not df_order[kat_col_order].dropna().empty else []
 
             st.write("### Filter Dashboard Interco")
             f_col1, f_col2, f_col3, f_col4 = st.columns(4)
             with f_col1: date_range = st.date_input("Select Date Range 📅", [min_date, max_date], key="i_date")
             with f_col2: pilih_status = st.selectbox("Cari Status 🔍", ["Semua"] + list(df_order['STATUS'].dropna().unique()), key="i_stat")
-            with f_col3: pilih_cust = st.selectbox("Pilih Customer (Kategori) 👤", list_cust_options, key="i_cust")
+            with f_col3: 
+                # Diubah menjadi st.multiselect agar bisa pilih lebih dari satu
+                pilih_cust = st.multiselect("Pilih Customer (Kategori) 👤", list_cust_options, key="i_cust")
             with f_col4: pilih_no = st.text_input("Cari Nomor Transaksi (SO/PO) 🔍", key="i_no")
 
             df_order_filtered = df_order.copy()
             if pilih_status != "Semua": df_order_filtered = df_order_filtered[df_order_filtered['STATUS'] == pilih_status]
-            if pilih_cust != "Semua" and kat_col_order: df_order_filtered = df_order_filtered[df_order_filtered[kat_col_order] == pilih_cust]
+            
+            # Filter multiselect customer (jika dipilih, filter data yang sesuai pilihan; jika kosong, tampilkan semua)
+            if pilih_cust and kat_col_order: 
+                df_order_filtered = df_order_filtered[df_order_filtered[kat_col_order].isin(pilih_cust)]
+                
             if pilih_no: df_order_filtered = df_order_filtered[df_order_filtered.astype(str).apply(lambda x: x.str.contains(pilih_no, case=False, na=False)).any(axis=1)]
 
             # Fungsi pembersihan nilai numerik/harga
@@ -104,24 +110,15 @@ if mode == "🏢 Central Procurement & Interco":
             st.write("### 📊 Detail Transaksi & Keuangan (Komersial Eksternal)")
             
             # Fungsi untuk mendeteksi apakah suatu baris termasuk internal yang harus di-hidden
-            # Hanya: 
-            # 1. PT. SIBIMA BERKARYA MANDIRI atau GA SIBIMA
-            # 2. PT. AGRO MINA INTI NUSANTARA atau AMIN / GA AMIIN
             def is_internal_hidden_row(row):
                 if not kat_col_order: return False
                 val = str(row[kat_col_order]).upper().strip()
-                
-                # Cek SIBIMA (PT. SIBIMA BERKARYA MANDIRI atau GA SIBIMA) - Mengabaikan SIBIMATECH
                 is_sibima_target = ('SIBIMA BERKARYA MANDIRI' in val) or (val == 'GA SIBIMA') or ('PT. SIBIMA' in val and 'TECH' not in val)
-                
-                # Cek AMIN / AGRO MINA (PT. AGRO MINA INTI NUSANTARA, AMIN, GA AMIIN)
                 is_amin_target = ('AGRO MINA INTI NUSANTARA' in val) or (val in ['AMIN', 'GA AMIIN', 'GA AMIN']) or ('AGRO MINA' in val)
-                
                 return is_sibima_target or is_amin_target
 
             # 1. Pemisahan Data: Komersial Eksternal vs Internal (Hidden)
             if kat_col_order:
-                # Mask untuk internal yang di-hidden
                 mask_internal = df_order_filtered.apply(is_internal_hidden_row, axis=1)
                 mask_not_cancel_pending = ~df_order_filtered['STATUS'].astype(str).str.upper().isin(['CANCEL', 'PENDING'])
                 
@@ -134,11 +131,10 @@ if mode == "🏢 Central Procurement & Interco":
                 df_internal_hidden = pd.DataFrame()
 
             # Metrik Keuangan
-            total_revenue_exc = df_komersial['PRICE_CLEAN'].sum()  # Diambil dari TOTAL HARGA JUAL
-            total_revenue_inc = total_revenue_exc * 1.11           # Total Harga Jual + PPN 11%
-            total_hpp_exc = df_komersial['HPP_CLEAN'].sum()        # Diambil dari TOTAL HARGA BELI
+            total_revenue_exc = df_komersial['PRICE_CLEAN'].sum()  
+            total_revenue_inc = total_revenue_exc * 1.11           
+            total_hpp_exc = df_komersial['HPP_CLEAN'].sum()        
             
-            # Total Transaksi dihitung unik berdasarkan Nomor PO Customer
             if po_cust_col and not df_komersial[po_cust_col].dropna().empty:
                 total_transaksi = df_komersial[po_cust_col].nunique()
             else:
@@ -146,7 +142,6 @@ if mode == "🏢 Central Procurement & Interco":
                 
             total_item = df_komersial['QTY_CLEAN'].sum()
             
-            # Outstanding Balance (Nilai Harga Jual dari barang yang belum diterima user atas PO-nya, exclude internal hidden & cancel)
             if status_col:
                 if kat_col_order:
                     outstanding_df = df_order_filtered[
@@ -246,7 +241,7 @@ if mode == "🏢 Central Procurement & Interco":
                 label="📥 Download Laporan RFQ Pending (CSV)",
                 data=csv_rfq_pending,
                 file_name="RFQ_Pending_Kendala.csv",
-                mime="text/css"
+                mime="text/csv"
             )
         else:
             st.warning("Data Master RFQ kosong.")
