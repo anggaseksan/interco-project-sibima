@@ -83,11 +83,12 @@ if mode == "🏢 Central Procurement & Interco":
                 try: return float(s)
                 except: return 0.0
 
-            # Deteksi Kolom QTY, Harga, dan HPP
+            # Deteksi Kolom QTY, Harga, HPP, dan No PO Customer
             qty_col = next((c for c in df_order_filtered.columns if 'QTY' in str(c).upper() or 'QUANTITY' in str(c).upper()), None)
             price_col = next((c for c in df_order_filtered.columns if any(k in str(c).upper() for k in ['HARGA JUAL', 'TOTAL HARGA', 'GRAND TOTAL', 'TOTAL', 'PRICE'])), None)
             unit_price_col = next((c for c in df_order_filtered.columns if any(k in str(c).upper() for k in ['SATUAN', 'UNIT PRICE', 'HARGA SATUAN'])), None)
             hpp_col = next((c for c in df_order_filtered.columns if any(k in str(c).upper() for k in ['HPP', 'MODAL', 'COST'])), None)
+            po_cust_col = next((c for c in df_order_filtered.columns if any(k in str(c).upper() for k in ['NO PO CUSTOMER', 'PO CUSTOMER', 'NOMOR PO'])), None)
 
             df_order_filtered['QTY_CLEAN'] = pd.to_numeric(df_order_filtered[qty_col], errors='coerce').fillna(0) if qty_col else 1.0
 
@@ -125,7 +126,13 @@ if mode == "🏢 Central Procurement & Interco":
             total_revenue_inc = df_komersial['PRICE_CLEAN'].sum()
             total_revenue_exc = total_revenue_inc / 1.11  
             total_hpp_exc = df_komersial['HPP_CLEAN'].sum()
-            total_transaksi = len(df_komersial)
+            
+            # Total Transaksi dihitung unik berdasarkan Nomor PO Customer (jika kolom ditemukan, jika tidak fallback ke len)
+            if po_cust_col and not df_komersial[po_cust_col].dropna().empty:
+                total_transaksi = df_komersial[po_cust_col].nunique()
+            else:
+                total_transaksi = len(df_komersial)
+                
             total_item = df_komersial['QTY_CLEAN'].sum()
             
             # Outstanding Balance Komersial
@@ -157,7 +164,11 @@ if mode == "🏢 Central Procurement & Interco":
             # 2. Section Tersembunyi (Hidden Expander) untuk Rekapitulasi Internal SIBIMA
             if not df_sibima_internal.empty:
                 with st.expander("📁 Lihat Rekapitulasi Transaksi Internal SIBIMA"):
-                    sibima_transaksi = len(df_sibima_internal)
+                    if po_cust_col and not df_sibima_internal[po_cust_col].dropna().empty:
+                        sibima_transaksi = df_sibima_internal[po_cust_col].nunique()
+                    else:
+                        sibima_transaksi = len(df_sibima_internal)
+                        
                     sibima_nominal = df_sibima_internal['PRICE_CLEAN'].sum()
                     sibima_item = df_sibima_internal['QTY_CLEAN'].sum()
                     
