@@ -106,14 +106,20 @@ if mode == "🏢 Central Procurement & Interco":
             st.divider()
             st.write("### 📊 Detail Transaksi & Keuangan")
             
-            total_revenue_inc = df_order_filtered['PRICE_CLEAN'].sum()
+            # Filter khusus untuk Revenue & HPP (Mengecualikan 'CANCEL' dan 'PENDING')
+            valid_revenue_df = df_order_filtered[~df_order_filtered['STATUS'].astype(str).str.upper().isin(['CANCEL', 'PENDING'])]
+
+            total_revenue_inc = valid_revenue_df['PRICE_CLEAN'].sum()
             total_revenue_exc = total_revenue_inc / 1.11  
-            total_hpp_exc = df_order_filtered['HPP_CLEAN'].sum()
+            total_hpp_exc = valid_revenue_df['HPP_CLEAN'].sum()
             
             total_transaksi = len(df_order_filtered)
             total_item = df_order_filtered['QTY_CLEAN'].sum()
             
-            outstanding_df = df_order_filtered[df_order_filtered['STATUS'].astype(str).str.upper() != 'SUDAH DITERIMA']
+            # Outstanding Balance (Pesanan belum diterima dan bukan Cancel)
+            outstanding_df = df_order_filtered[
+                (~df_order_filtered['STATUS'].astype(str).str.upper().isin(['SUDAH DITERIMA', 'CANCEL']))
+            ]
             balance_outstanding = outstanding_df['PRICE_CLEAN'].sum()
             top_kategori = df_order_filtered[kat_col_order].mode()[0] if kat_col_order and not df_order_filtered[kat_col_order].empty else "Tidak Ada"
 
@@ -256,8 +262,11 @@ if mode == "🏢 Central Procurement & Interco":
         if not df_order.empty:
             status_col = next((c for c in df_order.columns if 'STATUS' in str(c).upper()), None)
             if status_col:
-                df_interco_out = df_order[df_order[status_col].astype(str).str.upper() != 'SUDAH DITERIMA'].copy()
+                df_interco_out = df_order[
+                    (~df_order[status_col].astype(str).str.upper().isin(['SUDAH DITERIMA', 'CANCEL']))
+                ].copy()
             else:
+            
                 df_interco_out = df_order.copy()
 
             vend_col_in = next((c for c in df_interco_out.columns if 'VENDOR' in str(c).upper()), None)
