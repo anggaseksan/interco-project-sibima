@@ -156,7 +156,7 @@ if mode == "🏢 Central Procurement & Interco":
             
             # 2. Section Tersembunyi (Hidden Expander) untuk Rekapitulasi Internal SIBIMA
             if not df_sibima_internal.empty:
-                with st.expander("📁 Lihat Rekapitulasi Transaksi Internal SIBIMA (Hidden / Terpisah)"):
+                with st.expander("📁 Lihat Rekapitulasi Transaksi Internal SIBIMA"):
                     sibima_transaksi = len(df_sibima_internal)
                     sibima_nominal = df_sibima_internal['PRICE_CLEAN'].sum()
                     sibima_item = df_sibima_internal['QTY_CLEAN'].sum()
