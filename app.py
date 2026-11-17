@@ -122,12 +122,12 @@ if mode == "🏢 Central Procurement & Interco":
                 ]
                 df_sibima_internal = pd.DataFrame()
 
-            # Metrik Komersial Eksternal
-            total_revenue_inc = df_komersial['PRICE_CLEAN'].sum()
-            total_revenue_exc = total_revenue_inc / 1.11  
+            # Metrik Keuangan (Harga di sheet = Exclude PPN, Hitung Include PPN dengan dikali 1.11)
+            total_revenue_exc = df_komersial['PRICE_CLEAN'].sum()
+            total_revenue_inc = total_revenue_exc * 1.11  
             total_hpp_exc = df_komersial['HPP_CLEAN'].sum()
             
-            # Total Transaksi dihitung unik berdasarkan Nomor PO Customer (jika kolom ditemukan, jika tidak fallback ke len)
+            # Total Transaksi dihitung unik berdasarkan Nomor PO Customer
             if po_cust_col and not df_komersial[po_cust_col].dropna().empty:
                 total_transaksi = df_komersial[po_cust_col].nunique()
             else:
@@ -135,7 +135,7 @@ if mode == "🏢 Central Procurement & Interco":
                 
             total_item = df_komersial['QTY_CLEAN'].sum()
             
-            # Outstanding Balance Komersial
+            # Outstanding Balance Komersial (berdasarkan Exclude PPN)
             if kat_col_order:
                 outstanding_df = df_order_filtered[
                     (~df_order_filtered['STATUS'].astype(str).str.upper().isin(['SUDAH DITERIMA', 'CANCEL'])) &
@@ -169,12 +169,13 @@ if mode == "🏢 Central Procurement & Interco":
                     else:
                         sibima_transaksi = len(df_sibima_internal)
                         
-                    sibima_nominal = df_sibima_internal['PRICE_CLEAN'].sum()
+                    sibima_nominal_exc = df_sibima_internal['PRICE_CLEAN'].sum()
+                    sibima_nominal_inc = sibima_nominal_exc * 1.11
                     sibima_item = df_sibima_internal['QTY_CLEAN'].sum()
                     
                     sc1, sc2, sc3 = st.columns(3)
                     sc1.metric("Total Transaksi SIBIMA", sibima_transaksi)
-                    sc2.metric("Total Nilai SIBIMA", f"Rp {sibima_nominal:,.0f}".replace(',', '.'))
+                    sc2.metric("Total Nilai SIBIMA (Exc PPN)", f"Rp {sibima_nominal_exc:,.0f}".replace(',', '.'))
                     sc3.metric("Total QTY SIBIMA", f"{sibima_item:,.0f}")
                     
                     st.dataframe(df_sibima_internal, use_container_width=True, height=250)
