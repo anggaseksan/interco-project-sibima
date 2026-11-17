@@ -62,14 +62,13 @@ if mode == "🏢 Central Procurement & Interco":
             with f_col1: date_range = st.date_input("Select Date Range 📅", [min_date, max_date], key="i_date")
             with f_col2: pilih_status = st.selectbox("Cari Status 🔍", ["Semua"] + list(df_order['STATUS'].dropna().unique()), key="i_stat")
             with f_col3: 
-                # Diubah menjadi st.multiselect agar bisa pilih lebih dari satu
+                # Multiselect Customer (Kategori)
                 pilih_cust = st.multiselect("Pilih Customer (Kategori) 👤", list_cust_options, key="i_cust")
             with f_col4: pilih_no = st.text_input("Cari Nomor Transaksi (SO/PO) 🔍", key="i_no")
 
             df_order_filtered = df_order.copy()
             if pilih_status != "Semua": df_order_filtered = df_order_filtered[df_order_filtered['STATUS'] == pilih_status]
             
-            # Filter multiselect customer (jika dipilih, filter data yang sesuai pilihan; jika kosong, tampilkan semua)
             if pilih_cust and kat_col_order: 
                 df_order_filtered = df_order_filtered[df_order_filtered[kat_col_order].isin(pilih_cust)]
                 
@@ -110,6 +109,7 @@ if mode == "🏢 Central Procurement & Interco":
             st.write("### 📊 Detail Transaksi & Keuangan (Komersial Eksternal)")
             
             # Fungsi untuk mendeteksi apakah suatu baris termasuk internal yang harus di-hidden
+            # Hanya: PT. SIBIMA BERKARYA MANDIRI, GA SIBIMA, PT. AGRO MINA INTI NUSANTARA, AMIN, GA AMIIN
             def is_internal_hidden_row(row):
                 if not kat_col_order: return False
                 val = str(row[kat_col_order]).upper().strip()
@@ -131,10 +131,11 @@ if mode == "🏢 Central Procurement & Interco":
                 df_internal_hidden = pd.DataFrame()
 
             # Metrik Keuangan
-            total_revenue_exc = df_komersial['PRICE_CLEAN'].sum()  
-            total_revenue_inc = total_revenue_exc * 1.11           
-            total_hpp_exc = df_komersial['HPP_CLEAN'].sum()        
+            total_revenue_exc = df_komersial['PRICE_CLEAN'].sum()  # Diambil dari TOTAL HARGA JUAL
+            total_revenue_inc = total_revenue_exc * 1.11           # Total Harga Jual + PPN 11%
+            total_hpp_exc = df_komersial['HPP_CLEAN'].sum()        # Diambil dari TOTAL HARGA BELI
             
+            # Total Transaksi dihitung unik berdasarkan Nomor PO Customer
             if po_cust_col and not df_komersial[po_cust_col].dropna().empty:
                 total_transaksi = df_komersial[po_cust_col].nunique()
             else:
@@ -142,6 +143,7 @@ if mode == "🏢 Central Procurement & Interco":
                 
             total_item = df_komersial['QTY_CLEAN'].sum()
             
+            # Outstanding Balance (Nilai Harga Jual dari barang yang belum diterima user atas PO-nya)
             if status_col:
                 if kat_col_order:
                     outstanding_df = df_order_filtered[
@@ -179,6 +181,9 @@ if mode == "🏢 Central Procurement & Interco":
                         internal_transaksi = len(df_internal_hidden)
                         
                     internal_nominal_exc = df_internal_hidden['PRICE_CLEAN'].sum()
+                    if internal_nominal_exc == 0 and price_col:
+                        internal_nominal_exc = df_internal_hidden[price_col].apply(clean_price).sum()
+                        
                     internal_nominal_inc = internal_nominal_exc * 1.11
                     internal_item = df_internal_hidden['QTY_CLEAN'].sum()
                     
