@@ -106,20 +106,33 @@ if mode == "🏢 Central Procurement & Interco":
             st.divider()
             st.write("### 📊 Detail Transaksi & Keuangan (Komersial Eksternal)")
             
-            # 1. Pemisahan Data: Komersial Eksternal vs Internal SIBIMA
+            # Fungsi untuk mendeteksi apakah baris termasuk internal yang di-hidden (SIBIMA BERKARYA MANDIRI / AGRO MINA INTI NUSANTARA / AMIN)
+            def is_internal_hidden(row):
+                if not kat_col_order or pd.isna(row[kat_col_order]):
+                    return False
+                val = str(row[kat_col_order]).upper()
+                # Cek SIBIMA Berkarya Mandiri (hindari SIBIMATECH)
+                is_sibima_pusat = ('SIBIMA BERKARYA MANDIRI' in val) or (val.strip() == 'SIBIMA') or ('GA SIBIMA' in val)
+                # Cek Agro Mina / AMIN
+                is_amin = ('AGRO MINA INTI NUSANTARA' in val) or ('AMIN' in val)
+                return is_sibima_pusat or is_amin
+
+            # 1. Pemisahan Data: Komersial Eksternal vs Internal (Hidden)
             if kat_col_order:
+                # Filter data yang BUKAN Cancel/Pending DAN BUKAN internal hidden
                 df_komersial = df_order_filtered[
                     (~df_order_filtered['STATUS'].astype(str).str.upper().isin(['CANCEL', 'PENDING'])) &
-                    (~df_order_filtered[kat_col_order].astype(str).str.upper().str.contains('SIBIMA'))
+                    (~df_order_filtered.apply(is_internal_hidden, axis=1))
                 ]
-                df_sibima_internal = df_order_filtered[
-                    df_order_filtered[kat_col_order].astype(str).str.upper().str.contains('SIBIMA')
+                # Data internal yang di-hide (hanya SIBIMA Berkarya Mandiri & AMIN)
+                df_internal_hidden = df_order_filtered[
+                    df_order_filtered.apply(is_internal_hidden, axis=1)
                 ]
             else:
                 df_komersial = df_order_filtered[
                     (~df_order_filtered['STATUS'].astype(str).str.upper().isin(['CANCEL', 'PENDING']))
                 ]
-                df_sibima_internal = pd.DataFrame()
+                df_internal_hidden = pd.DataFrame()
 
             # Metrik Keuangan Sesuai Permintaan
             total_revenue_exc = df_komersial['PRICE_CLEAN'].sum()  # Diambil dari TOTAL HARGA JUAL
@@ -134,12 +147,12 @@ if mode == "🏢 Central Procurement & Interco":
                 
             total_item = df_komersial['QTY_CLEAN'].sum()
             
-            # Outstanding Balance (Nilai Harga Jual dari barang yang belum diterima user atas PO-nya)
+            # Outstanding Balance (Nilai Harga Jual dari barang yang belum diterima user atas PO-nya, exclude internal hidden & cancel)
             if status_col:
                 if kat_col_order:
                     outstanding_df = df_order_filtered[
                         (~df_order_filtered[status_col].astype(str).str.upper().isin(['SUDAH DITERIMA', 'CANCEL'])) &
-                        (~df_order_filtered[kat_col_order].astype(str).str.upper().str.contains('SIBIMA'))
+                        (~df_order_filtered.apply(is_internal_hidden, axis=1))
                     ]
                 else:
                     outstanding_df = df_order_filtered[
@@ -163,24 +176,24 @@ if mode == "🏢 Central Procurement & Interco":
             m6.metric("Total Item QTY", f"{total_item:,.0f}")
             m7.metric("Kategori Terbanyak", top_kategori)
             
-            # 2. Section Tersembunyi (Hidden Expander) untuk Rekapitulasi Internal SIBIMA
-            if not df_sibima_internal.empty:
-                with st.expander("📁 Lihat Rekapitulasi Transaksi Internal SIBIMA"):
-                    if po_cust_col and not df_sibima_internal[po_cust_col].dropna().empty:
-                        sibima_transaksi = df_sibima_internal[po_cust_col].nunique()
+            # 2. Section Tersembunyi (Hidden Expander) untuk Rekapitulasi Internal (SIBIMA & AMIN)
+            if not df_internal_hidden.empty:
+                with st.expander("📁 Lihat Rekapitulasi Transaksi Internal (SIBIMA & AMIN)"):
+                    if po_cust_col and not df_internal_hidden[po_cust_col].dropna().empty:
+                        internal_transaksi = df_internal_hidden[po_cust_col].nunique()
                     else:
-                        sibima_transaksi = len(df_sibima_internal)
+                        internal_transaksi = len(df_internal_hidden)
                         
-                    sibima_nominal_exc = df_sibima_internal['PRICE_CLEAN'].sum()
-                    sibima_nominal_inc = sibima_nominal_exc * 1.11
-                    sibima_item = df_sibima_internal['QTY_CLEAN'].sum()
+                    internal_nominal_exc = df_internal_hidden['PRICE_CLEAN'].sum()
+                    internal_nominal_inc = internal_nominal_exc * 1.11
+                    internal_item = df_internal_hidden['QTY_CLEAN'].sum()
                     
                     sc1, sc2, sc3 = st.columns(3)
-                    sc1.metric("Total Transaksi SIBIMA", sibima_transaksi)
-                    sc2.metric("Total Nilai SIBIMA (Exc PPN)", f"Rp {sibima_nominal_exc:,.0f}".replace(',', '.'))
-                    sc3.metric("Total QTY SIBIMA", f"{sibima_item:,.0f}")
+                    sc1.metric("Total Transaksi Internal", internal_transaksi)
+                    sc2.metric("Total Nilai Internal (Exc PPN)", f"Rp {internal_nominal_exc:,.0f}".replace(',', '.'))
+                    sc3.metric("Total QTY Internal", f"{internal_item:,.0f}")
                     
-                    st.dataframe(df_sibima_internal, use_container_width=True, height=250)
+                    st.dataframe(df_internal_hidden, use_container_width=True, height=250)
 
             st.divider()
             
