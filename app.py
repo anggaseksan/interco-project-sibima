@@ -53,9 +53,9 @@ if mode == "🏢 Central Procurement & Interco":
             min_date = df_rfq['TANGGAL RFQ'].min().date() if not df_rfq['TANGGAL RFQ'].isnull().all() else datetime.today().date()
             max_date = df_rfq['TANGGAL RFQ'].max().date() if not df_rfq['TANGGAL RFQ'].isnull().all() else datetime.today().date()
             
-            # Deteksi kolom kategori untuk filter customer ringkas
-            kat_col = next((c for c in df_order.columns if 'KATEGORI' in str(c).upper()), None)
-            list_cust_options = ["Semua"] + sorted(list(df_order[kat_col].dropna().unique())) if kat_col and not df_order[kat_col].dropna().empty else ["Semua"]
+            # Deteksi kolom kategori untuk filter customer ringkas di Master Order
+            kat_col_order = next((c for c in df_order.columns if 'KATEGORI' in str(c).upper()), None)
+            list_cust_options = ["Semua"] + sorted(list(df_order[kat_col_order].dropna().unique())) if kat_col_order and not df_order[kat_col_order].dropna().empty else ["Semua"]
 
             st.write("### Filter Dashboard Interco")
             f_col1, f_col2, f_col3, f_col4 = st.columns(4)
@@ -66,7 +66,7 @@ if mode == "🏢 Central Procurement & Interco":
 
             df_order_filtered = df_order.copy()
             if pilih_status != "Semua": df_order_filtered = df_order_filtered[df_order_filtered['STATUS'] == pilih_status]
-            if pilih_cust != "Semua" and kat_col: df_order_filtered = df_order_filtered[df_order_filtered[kat_col] == pilih_cust]
+            if pilih_cust != "Semua" and kat_col_order: df_order_filtered = df_order_filtered[df_order_filtered[kat_col_order] == pilih_cust]
             if pilih_no: df_order_filtered = df_order_filtered[df_order_filtered.astype(str).apply(lambda x: x.str.contains(pilih_no, case=False, na=False)).any(axis=1)]
 
             price_col = next((c for c in df_order_filtered.columns if 'TOTAL HARGA JUAL' in str(c).upper() or 'HARGA JUAL' in str(c).upper()), None)
@@ -95,7 +95,7 @@ if mode == "🏢 Central Procurement & Interco":
             
             outstanding_df = df_order_filtered[df_order_filtered['STATUS'].astype(str).str.upper() != 'SUDAH DITERIMA']
             balance_outstanding = outstanding_df['PRICE_CLEAN'].sum()
-            top_kategori = df_order_filtered[kat_col].mode()[0] if kat_col and not df_order_filtered[kat_col].empty else "Tidak Ada"
+            top_kategori = df_order_filtered[kat_col_order].mode()[0] if kat_col_order and not df_order_filtered[kat_col_order].empty else "Tidak Ada"
 
             r1_c1, r1_c2, r1_c3 = st.columns(3)
             r1_c1.metric("Total Order Nominal", f"Rp {total_revenue:,.0f}".replace(',', '.'))
@@ -125,30 +125,30 @@ if mode == "🏢 Central Procurement & Interco":
                     st.altair_chart(bar_chart, use_container_width=True)
 
             st.divider()
-            # Proporsi RFQ per User / Sales (PIC)
-            st.write("### 👥 Proporsi & Beban Kerja RFQ per User / Sales (PIC)")
-            pic_rfq_col = next((c for c in df_rfq.columns if any(k in str(c).upper() for k in ['PIC', 'USER', 'SALES', 'NAMA'])), None)
-            if pic_rfq_col:
-                pic_counts = df_rfq[pic_rfq_col].value_counts().reset_index()
-                pic_counts.columns = ['User / PIC', 'Jumlah RFQ']
+            # --- PROPORSIS RFQ BERDASARKAN KOLOM KATEGORI DI MASTER RFQ ---
+            st.write("### 🏢 Proporsi RFQ per Kategori (MASTER RFQ)")
+            kat_rfq_col = next((c for c in df_rfq.columns if 'KATEGORI' in str(c).upper()), None)
+            if kat_rfq_col:
+                kat_counts = df_rfq[kat_rfq_col].value_counts().reset_index()
+                kat_counts.columns = ['Kategori', 'Jumlah RFQ']
 
                 p_col1, p_col2 = st.columns([1, 2])
                 with p_col1:
-                    donut_pic = alt.Chart(pic_counts).mark_arc(innerRadius=50).encode(
+                    donut_kat = alt.Chart(kat_counts).mark_arc(innerRadius=50).encode(
                         theta=alt.Theta(field="Jumlah RFQ", type="quantitative"),
-                        color=alt.Color(field="User / PIC", type="nominal"),
-                        tooltip=['User / PIC', 'Jumlah RFQ']
+                        color=alt.Color(field="Kategori", type="nominal"),
+                        tooltip=['Kategori', 'Jumlah RFQ']
                     ).properties(height=300)
-                    st.altair_chart(donut_pic, use_container_width=True)
+                    st.altair_chart(donut_kat, use_container_width=True)
                 with p_col2:
-                    bar_pic = alt.Chart(pic_counts).mark_bar(color='#1f77b4').encode(
+                    bar_kat = alt.Chart(kat_counts).mark_bar(color='#1f77b4').encode(
                         x=alt.X('Jumlah RFQ:Q', title='Total RFQ Diterima'),
-                        y=alt.Y('User / PIC:N', sort='-x', title='Nama User / Sales (PIC)'),
-                        tooltip=['User / PIC', 'Jumlah RFQ']
+                        y=alt.Y('Kategori:N', sort='-x', title='Kategori Customer'),
+                        tooltip=['Kategori', 'Jumlah RFQ']
                     ).properties(height=300)
-                    st.altair_chart(bar_pic, use_container_width=True)
+                    st.altair_chart(bar_kat, use_container_width=True)
             else:
-                st.info("Kolom PIC / User / Sales tidak ditemukan di Master RFQ.")
+                st.info("Kolom Kategori tidak ditemukan di Master RFQ.")
 
     # --- TAB 2: MONITORING RFQ (PENDING & KENDALA) ---
     with tab_i2:
