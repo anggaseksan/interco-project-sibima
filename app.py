@@ -106,26 +106,29 @@ if mode == "🏢 Central Procurement & Interco":
             st.divider()
             st.write("### 📊 Detail Transaksi & Keuangan (Komersial Eksternal)")
             
-            # Filter khusus untuk metrik bersih (Mengecualikan Cancel, Pending, dan SIBIMA)
+            # 1. Pemisahan Data: Komersial Eksternal vs Internal SIBIMA
             if kat_col_order:
-                valid_revenue_df = df_order_filtered[
+                df_komersial = df_order_filtered[
                     (~df_order_filtered['STATUS'].astype(str).str.upper().isin(['CANCEL', 'PENDING'])) &
                     (~df_order_filtered[kat_col_order].astype(str).str.upper().str.contains('SIBIMA'))
                 ]
+                df_sibima_internal = df_order_filtered[
+                    df_order_filtered[kat_col_order].astype(str).str.upper().str.contains('SIBIMA')
+                ]
             else:
-                valid_revenue_df = df_order_filtered[
+                df_komersial = df_order_filtered[
                     (~df_order_filtered['STATUS'].astype(str).str.upper().isin(['CANCEL', 'PENDING']))
                 ]
+                df_sibima_internal = pd.DataFrame()
 
-            total_revenue_inc = valid_revenue_df['PRICE_CLEAN'].sum()
+            # Metrik Komersial Eksternal
+            total_revenue_inc = df_komersial['PRICE_CLEAN'].sum()
             total_revenue_exc = total_revenue_inc / 1.11  
-            total_hpp_exc = valid_revenue_df['HPP_CLEAN'].sum()
+            total_hpp_exc = df_komersial['HPP_CLEAN'].sum()
+            total_transaksi = len(df_komersial)
+            total_item = df_komersial['QTY_CLEAN'].sum()
             
-            # Total Transaksi & QTY sekarang murni dari transaksi komersial valid
-            total_transaksi = len(valid_revenue_df)
-            total_item = valid_revenue_df['QTY_CLEAN'].sum()
-            
-            # Outstanding Balance (Pesanan belum diterima, bukan Cancel, dan bukan SIBIMA)
+            # Outstanding Balance Komersial
             if kat_col_order:
                 outstanding_df = df_order_filtered[
                     (~df_order_filtered['STATUS'].astype(str).str.upper().isin(['SUDAH DITERIMA', 'CANCEL'])) &
@@ -137,8 +140,9 @@ if mode == "🏢 Central Procurement & Interco":
                 ]
                 
             balance_outstanding = outstanding_df['PRICE_CLEAN'].sum()
-            top_kategori = valid_revenue_df[kat_col_order].mode()[0] if kat_col_order and not valid_revenue_df[kat_col_order].empty else "Tidak Ada"
+            top_kategori = df_komersial[kat_col_order].mode()[0] if kat_col_order and not df_komersial[kat_col_order].empty else "Tidak Ada"
 
+            # Tampilan Metrik Utama (Komersial Bersih)
             m1, m2, m3, m4 = st.columns(4)
             m1.metric("Penjualan (Exclude PPN)", f"Rp {total_revenue_exc:,.0f}".replace(',', '.'))
             m2.metric("Penjualan (Include PPN)", f"Rp {total_revenue_inc:,.0f}".replace(',', '.'))
@@ -150,6 +154,20 @@ if mode == "🏢 Central Procurement & Interco":
             m6.metric("Total Item QTY", f"{total_item:,.0f}")
             m7.metric("Kategori Terbanyak", top_kategori)
             
+            # 2. Section Tersembunyi (Hidden Expander) untuk Rekapitulasi Internal SIBIMA
+            if not df_sibima_internal.empty:
+                with st.expander("📁 Lihat Rekapitulasi Transaksi Internal SIBIMA (Hidden / Terpisah)"):
+                    sibima_transaksi = len(df_sibima_internal)
+                    sibima_nominal = df_sibima_internal['PRICE_CLEAN'].sum()
+                    sibima_item = df_sibima_internal['QTY_CLEAN'].sum()
+                    
+                    sc1, sc2, sc3 = st.columns(3)
+                    sc1.metric("Total Transaksi SIBIMA", sibima_transaksi)
+                    sc2.metric("Total Nilai SIBIMA", f"Rp {sibima_nominal:,.0f}".replace(',', '.'))
+                    sc3.metric("Total QTY SIBIMA", f"{sibima_item:,.0f}")
+                    
+                    st.dataframe(df_sibima_internal, use_container_width=True, height=250)
+
             st.divider()
             
             st.write("#### 🍩 Proporsi Transaksi per Status & 🏢 Proporsi RFQ per Kategori Sales")
@@ -286,7 +304,7 @@ if mode == "🏢 Central Procurement & Interco":
 
             vend_col_in = next((c for c in df_interco_out.columns if 'VENDOR' in str(c).upper()), None)
             
-            list_v_in = ["Semua Vendor"] + sorted([str(x) for x in df_interco_out[vend_col_in].dropna().unique()]) if vend_col_in else ["SemuaVendor"]
+            list_v_in = ["Semua Vendor"] + sorted([str(x) for x in df_interco_out[vend_col_in].dropna().unique()]) if vend_col_in else ["Semua Vendor"]
             pilih_v_in = st.selectbox("🔍 Filter Berdasarkan Vendor Interco:", list_v_in)
 
             if pilih_v_in != "Semua Vendor" and vend_col_in:
