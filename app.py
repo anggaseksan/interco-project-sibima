@@ -30,7 +30,7 @@ st.sidebar.caption("Data terhubung langsung ke Google Sheets (Live Sync).")
 # ==========================================
 if mode == "🏢 Central Procurement & Interco":
     st.title("SIBIMA Performance Dashboard - PROCUREMENT & INTERCO")
-    st.caption("Pusat monitoring RFQ, Konversi SQ ke PO, Analisis Transaksi, dan Outstanding Supply Interco.")
+    st.caption("Pusat monitoring RFQ, Konversi SQ ke PO, Analisis Transaksi, Analisis Vendor, dan Outstanding Supply.")
 
     URL_RFQ = "https://docs.google.com/spreadsheets/d/18isSUeBYGiM2xuhV8QsXP57_AOotJ07vu1dvd5i62GI/export?format=csv&gid=1100229590"
     URL_ORDER = "https://docs.google.com/spreadsheets/d/18isSUeBYGiM2xuhV8QsXP57_AOotJ07vu1dvd5i62GI/export?format=csv&gid=467075902"
@@ -38,11 +38,12 @@ if mode == "🏢 Central Procurement & Interco":
     df_rfq = load_data(URL_RFQ, header_row=1)
     df_order = load_data(URL_ORDER, header_row=0)
 
-    # Tabs untuk Interco
-    tab_i1, tab_i2, tab_i3, tab_i4 = st.tabs([
+    # Pemisahan Tab Interco (Analisis Vendor dijadikan tab sendiri)
+    tab_i1, tab_i2, tab_i3, tab_i4, tab_i5 = st.tabs([
         "📊 Overview & Detail Transaksi", 
         "🔍 Monitoring RFQ (Pending & Kendala)", 
         "📈 Konversi SQ ke PO", 
+        "📋 Analisis Vendor",
         "🚚 Outstanding Supply Vendor"
     ])
 
@@ -53,7 +54,6 @@ if mode == "🏢 Central Procurement & Interco":
             min_date = df_rfq['TANGGAL RFQ'].min().date() if not df_rfq['TANGGAL RFQ'].isnull().all() else datetime.today().date()
             max_date = df_rfq['TANGGAL RFQ'].max().date() if not df_rfq['TANGGAL RFQ'].isnull().all() else datetime.today().date()
             
-            # Deteksi kolom kategori untuk filter customer ringkas di Master Order
             kat_col_order = next((c for c in df_order.columns if 'KATEGORI' in str(c).upper()), None)
             list_cust_options = ["Semua"] + sorted(list(df_order[kat_col_order].dropna().unique())) if kat_col_order and not df_order[kat_col_order].dropna().empty else ["Semua"]
 
@@ -107,48 +107,27 @@ if mode == "🏢 Central Procurement & Interco":
             r2_c2.metric("Kategori Terbanyak", top_kategori)
             
             st.divider()
+            
+            # Fokus Proporsi Status & Proporsi RFQ per Kategori Sales di sini
+            st.write("#### 🍩 Proporsi Transaksi per Status & 🏢 Proporsi RFQ per Kategori Sales")
             v_col1, v_col2 = st.columns(2)
             with v_col1:
-                st.write("#### 🍩 Proporsi Transaksi per Status")
                 if 'STATUS' in df_order_filtered.columns:
                     status_counts = df_order_filtered['STATUS'].value_counts().reset_index()
                     status_counts.columns = ['Status', 'Jumlah']
                     donut_chart = alt.Chart(status_counts).mark_arc(innerRadius=50).encode(theta=alt.Theta(field="Jumlah", type="quantitative"), color=alt.Color(field="Status", type="nominal"), tooltip=['Status', 'Jumlah']).properties(height=300)
                     st.altair_chart(donut_chart, use_container_width=True)
             with v_col2:
-                st.write("#### 👤 Analisis Vendor per Transaksi")
-                vend_c = next((c for c in df_order_filtered.columns if 'VENDOR' in str(c).upper()), None)
-                if vend_c:
-                    vendor_counts = df_order_filtered[vend_c].value_counts().head(10).reset_index()
-                    vendor_counts.columns = ['Vendor', 'Total Transaksi']
-                    bar_chart = alt.Chart(vendor_counts).mark_bar().encode(x=alt.X('Total Transaksi:Q', title='Jumlah Transaksi'), y=alt.Y('Vendor:N', sort='-x', title='Nama Vendor'), color=alt.Color('Vendor:N', legend=None), tooltip=['Vendor', 'Total Transaksi']).properties(height=300)
-                    st.altair_chart(bar_chart, use_container_width=True)
-
-            st.divider()
-            # --- PROPORSIS RFQ BERDASARKAN KOLOM KATEGORI DI MASTER RFQ ---
-            st.write("### 🏢 Proporsi RFQ per Kategori (MASTER RFQ)")
-            kat_rfq_col = next((c for c in df_rfq.columns if 'KATEGORI' in str(c).upper()), None)
-            if kat_rfq_col:
-                kat_counts = df_rfq[kat_rfq_col].value_counts().reset_index()
-                kat_counts.columns = ['Kategori', 'Jumlah RFQ']
-
-                p_col1, p_col2 = st.columns([1, 2])
-                with p_col1:
+                kat_rfq_col = next((c for c in df_rfq.columns if 'KATEGORI' in str(c).upper()), None)
+                if kat_rfq_col:
+                    kat_counts = df_rfq[kat_rfq_col].value_counts().reset_index()
+                    kat_counts.columns = ['Kategori', 'Jumlah RFQ']
                     donut_kat = alt.Chart(kat_counts).mark_arc(innerRadius=50).encode(
                         theta=alt.Theta(field="Jumlah RFQ", type="quantitative"),
                         color=alt.Color(field="Kategori", type="nominal"),
                         tooltip=['Kategori', 'Jumlah RFQ']
                     ).properties(height=300)
                     st.altair_chart(donut_kat, use_container_width=True)
-                with p_col2:
-                    bar_kat = alt.Chart(kat_counts).mark_bar(color='#1f77b4').encode(
-                        x=alt.X('Jumlah RFQ:Q', title='Total RFQ Diterima'),
-                        y=alt.Y('Kategori:N', sort='-x', title='Kategori Customer'),
-                        tooltip=['Kategori', 'Jumlah RFQ']
-                    ).properties(height=300)
-                    st.altair_chart(bar_kat, use_container_width=True)
-            else:
-                st.info("Kolom Kategori tidak ditemukan di Master RFQ.")
 
     # --- TAB 2: MONITORING RFQ (PENDING & KENDALA) ---
     with tab_i2:
@@ -219,8 +198,37 @@ if mode == "🏢 Central Procurement & Interco":
         else:
             st.warning("Data RFQ atau Order tidak lengkap untuk melakukan analisis konversi.")
 
-    # --- TAB 4: OUTSTANDING SUPPLY VENDOR (INTERCO) ---
+    # --- TAB 4: ANALISIS VENDOR ---
     with tab_i4:
+        st.write("### 📋 Analisis Performa & Transaksi Vendor")
+        st.markdown("Menampilkan rincian volume transaksi dan sebaran vendor yang menangani pesanan di interco.")
+
+        if not df_order.empty:
+            vend_c = next((c for c in df_order.columns if 'VENDOR' in str(c).upper()), None)
+            if vend_c:
+                vendor_counts = df_order[vend_c].value_counts().reset_index()
+                vendor_counts.columns = ['Vendor', 'Total Transaksi']
+
+                st.metric("Total Vendor Aktif", len(vendor_counts))
+                st.divider()
+
+                bar_chart_full = alt.Chart(vendor_counts).mark_bar().encode(
+                    x=alt.X('Total Transaksi:Q', title='Jumlah Transaksi'),
+                    y=alt.Y('Vendor:N', sort='-x', title='Nama Vendor'),
+                    color=alt.Color('Vendor:N', legend=None),
+                    tooltip=['Vendor', 'Total Transaksi']
+                ).properties(height=500)
+                st.altair_chart(bar_chart_full, use_container_width=True)
+
+                st.write("#### 📑 Tabel Rekapitulasi Transaksi per Vendor")
+                st.dataframe(vendor_counts, use_container_width=True, height=350)
+            else:
+                st.warning("Kolom Vendor tidak ditemukan pada Master Order.")
+        else:
+            st.warning("Data Master Order kosong.")
+
+    # --- TAB 5: OUTSTANDING SUPPLY VENDOR (INTERCO) ---
+    with tab_i5:
         st.write("### 🚚 Monitoring Outstanding Supply Vendor (Interco)")
         st.markdown("Menampilkan daftar transaksi order interco yang barangnya atau pengirimannya masih *outstanding* (belum diterima).")
 
@@ -229,32 +237,4 @@ if mode == "🏢 Central Procurement & Interco":
             if status_col:
                 df_interco_out = df_order[df_order[status_col].astype(str).str.upper() != 'SUDAH DITERIMA'].copy()
             else:
-                df_interco_out = df_order.copy()
-
-            vend_col_in = next((c for c in df_interco_out.columns if 'VENDOR' in str(c).upper()), None)
-            
-            list_v_in = ["Semua Vendor"] + sorted([str(x) for x in df_interco_out[vend_col_in].dropna().unique()]) if vend_col_in else ["Semua Vendor"]
-            pilih_v_in = st.selectbox("🔍 Filter Berdasarkan Vendor Interco:", list_v_in)
-
-            if pilih_v_in != "Semua Vendor" and vend_col_in:
-                df_interco_out = df_interco_out[df_interco_out[vend_col_in].astype(str) == pilih_v_in]
-
-            st.metric("Total Transaksi Interco Outstanding", len(df_interco_out))
-            st.dataframe(df_interco_out, use_container_width=True, height=450)
-
-            csv_in_out = df_interco_out.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                label="📥 Download Laporan Outstanding Interco (CSV)",
-                data=csv_in_out,
-                file_name="Outstanding_Interco_Vendor.csv",
-                mime="text/csv"
-            )
-        else:
-            st.warning("Data Master Order kosong.")
-
-# ==========================================
-# MODE 2: PROJECT YTP (Tahap 2 & 3) [DI-HOLD SEMENTARA]
-# ==========================================
-elif mode == "🏗️ Project (YTP Tahap 2 & 3)":
-    st.title("🏗️ DASHBOARD ANALITIK PROJECT (YTP)")
-    st.info("Mode Project YTP sedang di-hold sementara sesuai permintaan. Silakan gunakan menu Central Procurement & Interco.")
+                df_interco_out = df_order
