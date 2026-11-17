@@ -83,32 +83,25 @@ if mode == "🏢 Central Procurement & Interco":
                 try: return float(s)
                 except: return 0.0
 
-            # Deteksi Kolom Secara Spesifik
-            qty_col = next((c for c in df_order_filtered.columns if 'QTY' in str(c).upper() or 'QUANTITY' in str(c).upper()), None)
+            # Deteksi Kolom Berdasarkan Header Persis dari Sheet
+            qty_col = next((c for c in df_order_filtered.columns if 'QTY' in str(c).upper()), None)
             
-            # Harga Jual (Exclude PPN) diambil dari Total Harga Jual
-            price_col = next((c for c in df_order_filtered.columns if 'TOTAL HARGA JUAL' in str(c).upper() or 'HARGA JUAL' in str(c).upper() or ('HARGA' in str(c).upper() and 'JUAL' in str(c).upper())), None)
+            # Penjualan Exclude PPN diambil dari TOTAL HARGA JUAL
+            price_col = next((c for c in df_order_filtered.columns if 'TOTAL HARGA JUAL' in str(c).upper()), None)
             if not price_col:
-                price_col = next((c for c in df_order_filtered.columns if any(k in str(c).upper() for k in ['GRAND TOTAL', 'TOTAL HARGA', 'TOTAL'])), None)
+                price_col = next((c for c in df_order_filtered.columns if 'HARGA JUAL' in str(c).upper()), None)
 
-            # HPP diambil khusus dari Total Harga Beli
-            hpp_col = next((c for c in df_order_filtered.columns if 'TOTAL HARGA BELI' in str(c).upper() or 'HARGA BELI' in str(c).upper() or ('BELI' in str(c).upper() and 'HARGA' in str(c).upper())), None)
+            # HPP diambil dari TOTAL HARGA BELI
+            hpp_col = next((c for c in df_order_filtered.columns if 'TOTAL HARGA BELI' in str(c).upper()), None)
             if not hpp_col:
-                hpp_col = next((c for c in df_order_filtered.columns if any(k in str(c).upper() for k in ['HPP', 'MODAL', 'COST'])), None)
+                hpp_col = next((c for c in df_order_filtered.columns if 'HARGA BELI' in str(c).upper()), None)
 
-            po_cust_col = next((c for c in df_order_filtered.columns if any(k in str(c).upper() for k in ['NO PO CUSTOMER', 'PO CUSTOMER', 'NOMOR PO'])), None)
+            po_cust_col = next((c for c in df_order_filtered.columns if 'NO PO CUSTOMER' in str(c).upper() or 'PO CUSTOMER' in str(c).upper()), None)
+            status_col = next((c for c in df_order_filtered.columns if 'STATUS' in str(c).upper()), None)
 
             df_order_filtered['QTY_CLEAN'] = pd.to_numeric(df_order_filtered[qty_col], errors='coerce').fillna(0) if qty_col else 1.0
-
-            if price_col:
-                df_order_filtered['PRICE_CLEAN'] = df_order_filtered[price_col].apply(clean_price)
-            else:
-                df_order_filtered['PRICE_CLEAN'] = 0.0
-
-            if hpp_col:
-                df_order_filtered['HPP_CLEAN'] = df_order_filtered[hpp_col].apply(clean_price)
-            else:
-                df_order_filtered['HPP_CLEAN'] = 0.0
+            df_order_filtered['PRICE_CLEAN'] = df_order_filtered[price_col].apply(clean_price) if price_col else 0.0
+            df_order_filtered['HPP_CLEAN'] = df_order_filtered[hpp_col].apply(clean_price) if hpp_col else 0.0
 
             st.divider()
             st.write("### 📊 Detail Transaksi & Keuangan (Komersial Eksternal)")
@@ -128,10 +121,10 @@ if mode == "🏢 Central Procurement & Interco":
                 ]
                 df_sibima_internal = pd.DataFrame()
 
-            # Metrik Keuangan
-            total_revenue_exc = df_komersial['PRICE_CLEAN'].sum()  # Exclude PPN dari Total Harga Jual
-            total_revenue_inc = total_revenue_exc * 1.11           # Include PPN (+11%)
-            total_hpp_exc = df_komersial['HPP_CLEAN'].sum()        # HPP murni dari Total Harga Beli
+            # Metrik Keuangan Sesuai Permintaan
+            total_revenue_exc = df_komersial['PRICE_CLEAN'].sum()  # Diambil dari TOTAL HARGA JUAL
+            total_revenue_inc = total_revenue_exc * 1.11           # Total Harga Jual + PPN 11%
+            total_hpp_exc = df_komersial['HPP_CLEAN'].sum()        # Diambil dari TOTAL HARGA BELI
             
             # Total Transaksi dihitung unik berdasarkan Nomor PO Customer
             if po_cust_col and not df_komersial[po_cust_col].dropna().empty:
@@ -142,7 +135,6 @@ if mode == "🏢 Central Procurement & Interco":
             total_item = df_komersial['QTY_CLEAN'].sum()
             
             # Outstanding Balance (Nilai Harga Jual dari barang yang belum diterima user atas PO-nya)
-            status_col = next((c for c in df_order_filtered.columns if 'STATUS' in str(c).upper()), None)
             if status_col:
                 if kat_col_order:
                     outstanding_df = df_order_filtered[
@@ -195,8 +187,8 @@ if mode == "🏢 Central Procurement & Interco":
             st.write("#### 🍩 Proporsi Transaksi per Status & 🏢 Proporsi RFQ per Kategori Sales")
             v_col1, v_col2 = st.columns(2)
             with v_col1:
-                if 'STATUS' in df_order_filtered.columns:
-                    status_counts = df_order_filtered['STATUS'].value_counts().reset_index()
+                if status_col:
+                    status_counts = df_order_filtered[status_col].value_counts().reset_index()
                     status_counts.columns = ['Status', 'Jumlah']
                     donut_chart = alt.Chart(status_counts).mark_arc(innerRadius=50).encode(theta=alt.Theta(field="Jumlah", type="quantitative"), color=alt.Color(field="Status", type="nominal"), tooltip=['Status', 'Jumlah']).properties(height=300)
                     st.altair_chart(donut_chart, use_container_width=True)
