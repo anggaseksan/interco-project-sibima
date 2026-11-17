@@ -106,8 +106,18 @@ if mode == "🏢 Central Procurement & Interco":
             st.divider()
             st.write("### 📊 Detail Transaksi & Keuangan")
             
-            # Filter khusus untuk Revenue & HPP (Mengecualikan 'CANCEL' dan 'PENDING')
-            valid_revenue_df = df_order_filtered[~df_order_filtered['STATUS'].astype(str).str.upper().isin(['CANCEL', 'PENDING'])]
+            # Filter khusus untuk Revenue & HPP:
+            # 1. Status TIDAK BOLEH 'CANCEL' atau 'PENDING'
+            # 2. Kategori/Customer TIDAK BOLEH mengandung kata 'SIBIMA'
+            if kat_col_order:
+                valid_revenue_df = df_order_filtered[
+                    (~df_order_filtered['STATUS'].astype(str).str.upper().isin(['CANCEL', 'PENDING'])) &
+                    (~df_order_filtered[kat_col_order].astype(str).str.upper().str.contains('SIBIMA'))
+                ]
+            else:
+                valid_revenue_df = df_order_filtered[
+                    (~df_order_filtered['STATUS'].astype(str).str.upper().isin(['CANCEL', 'PENDING']))
+                ]
 
             total_revenue_inc = valid_revenue_df['PRICE_CLEAN'].sum()
             total_revenue_exc = total_revenue_inc / 1.11  
@@ -116,10 +126,17 @@ if mode == "🏢 Central Procurement & Interco":
             total_transaksi = len(df_order_filtered)
             total_item = df_order_filtered['QTY_CLEAN'].sum()
             
-            # Outstanding Balance (Pesanan belum diterima dan bukan Cancel)
-            outstanding_df = df_order_filtered[
-                (~df_order_filtered['STATUS'].astype(str).str.upper().isin(['SUDAH DITERIMA', 'CANCEL']))
-            ]
+            # Outstanding Balance (Pesanan belum diterima, bukan Cancel, dan bukan SIBIMA)
+            if kat_col_order:
+                outstanding_df = df_order_filtered[
+                    (~df_order_filtered['STATUS'].astype(str).str.upper().isin(['SUDAH DITERIMA', 'CANCEL'])) &
+                    (~df_order_filtered[kat_col_order].astype(str).str.upper().str.contains('SIBIMA'))
+                ]
+            else:
+                outstanding_df = df_order_filtered[
+                    (~df_order_filtered['STATUS'].astype(str).str.upper().isin(['SUDAH DITERIMA', 'CANCEL']))
+                ]
+                
             balance_outstanding = outstanding_df['PRICE_CLEAN'].sum()
             top_kategori = df_order_filtered[kat_col_order].mode()[0] if kat_col_order and not df_order_filtered[kat_col_order].empty else "Tidak Ada"
 
@@ -266,7 +283,6 @@ if mode == "🏢 Central Procurement & Interco":
                     (~df_order[status_col].astype(str).str.upper().isin(['SUDAH DITERIMA', 'CANCEL']))
                 ].copy()
             else:
-            
                 df_interco_out = df_order.copy()
 
             vend_col_in = next((c for c in df_interco_out.columns if 'VENDOR' in str(c).upper()), None)
