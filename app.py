@@ -85,13 +85,10 @@ if mode == "🏢 Central Procurement & Interco":
 
             # Deteksi Kolom Berdasarkan Header Persis dari Sheet
             qty_col = next((c for c in df_order_filtered.columns if 'QTY' in str(c).upper()), None)
-            
-            # Penjualan Exclude PPN diambil dari TOTAL HARGA JUAL
             price_col = next((c for c in df_order_filtered.columns if 'TOTAL HARGA JUAL' in str(c).upper()), None)
             if not price_col:
                 price_col = next((c for c in df_order_filtered.columns if 'HARGA JUAL' in str(c).upper()), None)
 
-            # HPP diambil dari TOTAL HARGA BELI
             hpp_col = next((c for c in df_order_filtered.columns if 'TOTAL HARGA BELI' in str(c).upper()), None)
             if not hpp_col:
                 hpp_col = next((c for c in df_order_filtered.columns if 'HARGA BELI' in str(c).upper()), None)
@@ -106,35 +103,37 @@ if mode == "🏢 Central Procurement & Interco":
             st.divider()
             st.write("### 📊 Detail Transaksi & Keuangan (Komersial Eksternal)")
             
-            # Fungsi untuk mendeteksi apakah baris termasuk internal yang di-hidden (SIBIMA BERKARYA MANDIRI / AGRO MINA INTI NUSANTARA / AMIN)
-            def is_internal_hidden(row):
-                if not kat_col_order or pd.isna(row[kat_col_order]):
-                    return False
-                val = str(row[kat_col_order]).upper()
-                # Cek SIBIMA Berkarya Mandiri (hindari SIBIMATECH)
-                is_sibima_pusat = ('SIBIMA BERKARYA MANDIRI' in val) or (val.strip() == 'SIBIMA') or ('GA SIBIMA' in val)
-                # Cek Agro Mina / AMIN
-                is_amin = ('AGRO MINA INTI NUSANTARA' in val) or ('AMIN' in val)
-                return is_sibima_pusat or is_amin
+            # Fungsi untuk mendeteksi apakah suatu baris termasuk internal yang harus di-hidden
+            # Hanya: 
+            # 1. PT. SIBIMA BERKARYA MANDIRI atau GA SIBIMA
+            # 2. PT. AGRO MINA INTI NUSANTARA atau AMIN / GA AMIIN
+            def is_internal_hidden_row(row):
+                if not kat_col_order: return False
+                val = str(row[kat_col_order]).upper().strip()
+                
+                # Cek SIBIMA (PT. SIBIMA BERKARYA MANDIRI atau GA SIBIMA) - Mengabaikan SIBIMATECH
+                is_sibima_target = ('SIBIMA BERKARYA MANDIRI' in val) or (val == 'GA SIBIMA') or ('PT. SIBIMA' in val and 'TECH' not in val)
+                
+                # Cek AMIN / AGRO MINA (PT. AGRO MINA INTI NUSANTARA, AMIN, GA AMIIN)
+                is_amin_target = ('AGRO MINA INTI NUSANTARA' in val) or (val in ['AMIN', 'GA AMIIN', 'GA AMIN']) or ('AGRO MINA' in val)
+                
+                return is_sibima_target or is_amin_target
 
             # 1. Pemisahan Data: Komersial Eksternal vs Internal (Hidden)
             if kat_col_order:
-                # Filter data yang BUKAN Cancel/Pending DAN BUKAN internal hidden
-                df_komersial = df_order_filtered[
-                    (~df_order_filtered['STATUS'].astype(str).str.upper().isin(['CANCEL', 'PENDING'])) &
-                    (~df_order_filtered.apply(is_internal_hidden, axis=1))
-                ]
-                # Data internal yang di-hide (hanya SIBIMA Berkarya Mandiri & AMIN)
-                df_internal_hidden = df_order_filtered[
-                    df_order_filtered.apply(is_internal_hidden, axis=1)
-                ]
+                # Mask untuk internal yang di-hidden
+                mask_internal = df_order_filtered.apply(is_internal_hidden_row, axis=1)
+                mask_not_cancel_pending = ~df_order_filtered['STATUS'].astype(str).str.upper().isin(['CANCEL', 'PENDING'])
+                
+                df_komersial = df_order_filtered[mask_not_cancel_pending & (~mask_internal)]
+                df_internal_hidden = df_order_filtered[mask_internal]
             else:
                 df_komersial = df_order_filtered[
                     (~df_order_filtered['STATUS'].astype(str).str.upper().isin(['CANCEL', 'PENDING']))
                 ]
                 df_internal_hidden = pd.DataFrame()
 
-            # Metrik Keuangan Sesuai Permintaan
+            # Metrik Keuangan
             total_revenue_exc = df_komersial['PRICE_CLEAN'].sum()  # Diambil dari TOTAL HARGA JUAL
             total_revenue_inc = total_revenue_exc * 1.11           # Total Harga Jual + PPN 11%
             total_hpp_exc = df_komersial['HPP_CLEAN'].sum()        # Diambil dari TOTAL HARGA BELI
@@ -152,7 +151,7 @@ if mode == "🏢 Central Procurement & Interco":
                 if kat_col_order:
                     outstanding_df = df_order_filtered[
                         (~df_order_filtered[status_col].astype(str).str.upper().isin(['SUDAH DITERIMA', 'CANCEL'])) &
-                        (~df_order_filtered.apply(is_internal_hidden, axis=1))
+                        (~df_order_filtered.apply(is_internal_hidden_row, axis=1))
                     ]
                 else:
                     outstanding_df = df_order_filtered[
@@ -247,7 +246,7 @@ if mode == "🏢 Central Procurement & Interco":
                 label="📥 Download Laporan RFQ Pending (CSV)",
                 data=csv_rfq_pending,
                 file_name="RFQ_Pending_Kendala.csv",
-                mime="text/csv"
+                mime="text/css"
             )
         else:
             st.warning("Data Master RFQ kosong.")
