@@ -343,4 +343,11 @@ if mode == "🏢 Central Procurement & Interco":
                 mime="text/csv"
             )
         else:
-            st.warning("
+            st.warning("Data Master Order kosong.")
+
+# ==========================================
+# MODE 2: PROJECT YTP (Tahap 2 & 3) [DI-HOLD SEMENTARA]
+# ==========================================
+elif mode == "🏗️ Project (YTP Tahap 2 & 3)":
+    st.title("🏗️ DASHBOARD ANALITIK PROJECT (YTP)")
+    st.info("Mode Project YTP sedang di-hold sementara sesuai permintaan. Silakan gunakan menu Central Procurement & Interco.")
