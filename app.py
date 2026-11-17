@@ -131,7 +131,7 @@ if mode == "🏢 Central Procurement & Interco":
             # Metrik Keuangan
             total_revenue_exc = df_komersial['PRICE_CLEAN'].sum()  # Exclude PPN dari Total Harga Jual
             total_revenue_inc = total_revenue_exc * 1.11           # Include PPN (+11%)
-            total_hpp_exc = df_komersial['HPP_CLEAN'].sum()        # HPP dari Total Harga Beli
+            total_hpp_exc = df_komersial['HPP_CLEAN'].sum()        # HPP murni dari Total Harga Beli
             
             # Total Transaksi dihitung unik berdasarkan Nomor PO Customer
             if po_cust_col and not df_komersial[po_cust_col].dropna().empty:
@@ -141,7 +141,7 @@ if mode == "🏢 Central Procurement & Interco":
                 
             total_item = df_komersial['QTY_CLEAN'].sum()
             
-            # Outstanding Balance (Barang belum diterima user atas PO-nya, exclude Cancel & Sudah Diterima)
+            # Outstanding Balance (Nilai Harga Jual dari barang yang belum diterima user atas PO-nya)
             status_col = next((c for c in df_order_filtered.columns if 'STATUS' in str(c).upper()), None)
             if status_col:
                 if kat_col_order:
@@ -343,11 +343,4 @@ if mode == "🏢 Central Procurement & Interco":
                 mime="text/csv"
             )
         else:
-            st.warning("Data Master Order kosong.")
-
-# ==========================================
-# MODE 2: PROJECT YTP (Tahap 2 & 3) [DI-HOLD SEMENTARA]
-# ==========================================
-elif mode == "🏗️ Project (YTP Tahap 2 & 3)":
-    st.title("🏗️ DASHBOARD ANALITIK PROJECT (YTP)")
-    st.info("Mode Project YTP sedang di-hold sementara sesuai permintaan. Silakan gunakan menu Central Procurement & Interco.")
+            st.warning("
