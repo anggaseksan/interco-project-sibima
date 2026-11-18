@@ -269,13 +269,15 @@ if mode == "🏢 Central Procurement & Interco":
         st.markdown("Menganalisis data dari `MASTER RFQ` untuk melacak RFQ yang statusnya belum selesai, tertunda, atau memiliki kendala operasional.")
 
         if not df_rfq.empty:
-            stat_rfq_col = next((c for c in df_rfq.columns if any(k in str(c).upper() for k in ['STATUS', 'PROGRESS', 'KET', 'KETERANGAN'])), None)
+            stat_rfq_col = next((c for c in df_rfq.columns if 'STATUS' in str(c).upper()), None)
 
             def is_pending_rfq(row):
                 if stat_rfq_col and pd.notna(row[stat_rfq_col]):
-                    val = str(row[stat_rfq_col]).upper()
-                    if any(k in val for k in ['SELESAI', 'DONE', 'CLOSED', 'PO']):
+                    val = str(row[stat_rfq_col]).upper().strip()
+                    # Jika statusnya sudah selesai (COMPLETE, DONE, CLOSED, SELESAI, PO), maka BUKAN pending
+                    if any(k in val for k in ['COMPLETE', 'DONE', 'CLOSED', 'SELESAI', 'PO', 'CLOSE']):
                         return False
+                # Jika statusnya PROCESS, REQUEST, PPENDING, CANCEL, atau kosong, masukkan ke list pending/kendala
                 return True
 
             df_rfq_pending = df_rfq[df_rfq.apply(is_pending_rfq, axis=1)].copy() if stat_rfq_col else df_rfq.copy()
