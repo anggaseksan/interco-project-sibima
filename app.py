@@ -5,6 +5,32 @@ from datetime import datetime
 
 st.set_page_config(page_title="SIBIMA Performance Dashboard", layout="wide", page_icon="📈")
 
+# Tambahan CSS Global untuk Responsivitas & Mencegah Konten Terpotong di Berbagai Ukuran Layar
+st.markdown("""
+    <style>
+        /* Memastikan kontainer utama fleksibel dan tidak meluber keluar layar */
+        .main .block-container {
+            padding-left: 2rem;
+            padding-right: 2rem;
+            max-width: 100%;
+        }
+        /* Responsivitas untuk card metric agar teks menyesuaikan lebar */
+        [data-testid="stMetricValue"] {
+            font-size: clamp(1.2rem, 2.5vw, 1.8rem) !important;
+            word-break: break-word;
+        }
+        /* Membuat tabel/dataframe responsif dengan scroll horizontal otomatis jika layar sempit */
+        [data-testid="stDataFrame"] {
+            width: 100% !important;
+            overflow-x: auto;
+        }
+        /* Mengatur agar elemen multiselect dan dropdown menyesuaikan kontainer */
+        .stMultiSelect, .stSelectbox, .stDateInput {
+            width: 100% !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 # Fungsi load data dengan cache dinamis
 @st.cache_data(ttl=10)
 def load_data(url, header_row=0):
@@ -62,7 +88,6 @@ if mode == "🏢 Central Procurement & Interco":
             with f_col1: date_range = st.date_input("Select Date Range 📅", [min_date, max_date], key="i_date")
             with f_col2: pilih_status = st.selectbox("Cari Status 🔍", ["Semua"] + list(df_order['STATUS'].dropna().unique()), key="i_stat")
             with f_col3: 
-                # Multiselect Customer (Kategori)
                 pilih_cust = st.multiselect("Pilih Customer (Kategori) 👤", list_cust_options, key="i_cust")
             with f_col4: pilih_no = st.text_input("Cari Nomor Transaksi (SO/PO) 🔍", key="i_no")
 
@@ -108,8 +133,6 @@ if mode == "🏢 Central Procurement & Interco":
             st.divider()
             st.write("### 📊 Detail Transaksi & Keuangan (Komersial Eksternal)")
             
-            # Fungsi untuk mendeteksi apakah suatu baris termasuk internal yang harus di-hidden
-            # Hanya: PT. SIBIMA BERKARYA MANDIRI, GA SIBIMA, PT. AGRO MINA INTI NUSANTARA, AMIN, GA AMIIN
             def is_internal_hidden_row(row):
                 if not kat_col_order: return False
                 val = str(row[kat_col_order]).upper().strip()
@@ -117,7 +140,6 @@ if mode == "🏢 Central Procurement & Interco":
                 is_amin_target = ('AGRO MINA INTI NUSANTARA' in val) or (val in ['AMIN', 'GA AMIIN', 'GA AMIN']) or ('AGRO MINA' in val)
                 return is_sibima_target or is_amin_target
 
-            # 1. Pemisahan Data: Komersial Eksternal vs Internal (Hidden)
             if kat_col_order:
                 mask_internal = df_order_filtered.apply(is_internal_hidden_row, axis=1)
                 mask_not_cancel_pending = ~df_order_filtered['STATUS'].astype(str).str.upper().isin(['CANCEL', 'PENDING'])
@@ -131,11 +153,10 @@ if mode == "🏢 Central Procurement & Interco":
                 df_internal_hidden = pd.DataFrame()
 
             # Metrik Keuangan
-            total_revenue_exc = df_komersial['PRICE_CLEAN'].sum()  # Diambil dari TOTAL HARGA JUAL
-            total_revenue_inc = total_revenue_exc * 1.11           # Total Harga Jual + PPN 11%
-            total_hpp_exc = df_komersial['HPP_CLEAN'].sum()        # Diambil dari TOTAL HARGA BELI
+            total_revenue_exc = df_komersial['PRICE_CLEAN'].sum()
+            total_revenue_inc = total_revenue_exc * 1.11
+            total_hpp_exc = df_komersial['HPP_CLEAN'].sum()
             
-            # Total Transaksi dihitung unik berdasarkan Nomor PO Customer
             if po_cust_col and not df_komersial[po_cust_col].dropna().empty:
                 total_transaksi = df_komersial[po_cust_col].nunique()
             else:
@@ -143,7 +164,6 @@ if mode == "🏢 Central Procurement & Interco":
                 
             total_item = df_komersial['QTY_CLEAN'].sum()
             
-            # Outstanding Balance (Nilai Harga Jual dari barang yang belum diterima user atas PO-nya)
             if status_col:
                 if kat_col_order:
                     outstanding_df = df_order_filtered[
@@ -172,14 +192,12 @@ if mode == "🏢 Central Procurement & Interco":
             m6.metric("Total Item QTY", f"{total_item:,.0f}")
             m7.metric("Kategori Terbanyak", top_kategori)
             
-            # 2. Section Tersembunyi (Hidden Expander) untuk Rekapitulasi Internal (DIPISAH SIBIMA & AMIN)
+            # --- SECTION TERPISAH: REKAPITULASI INTERNAL SIBIMA & AMIN ---
             if not df_internal_hidden.empty:
-                # Filter khusus SIBIMA
                 def is_sibima_row(row):
                     val = str(row[kat_col_order]).upper().strip() if kat_col_order else ""
                     return ('SIBIMA BERKARYA MANDIRI' in val) or (val == 'GA SIBIMA') or ('PT. SIBIMA' in val and 'TECH' not in val)
                 
-                # Filter khusus AMIN
                 def is_amin_row(row):
                     val = str(row[kat_col_order]).upper().strip() if kat_col_order else ""
                     return ('AGRO MINA INTI NUSANTARA' in val) or (val in ['AMIN', 'GA AMIIN', 'GA AMIN']) or ('AGRO MINA' in val)
@@ -187,7 +205,7 @@ if mode == "🏢 Central Procurement & Interco":
                 df_sibima_hidden = df_internal_hidden[df_internal_hidden.apply(is_sibima_row, axis=1)]
                 df_amin_hidden = df_internal_hidden[df_internal_hidden.apply(is_amin_row, axis=1)]
 
-                # Expander 1: SIBIMA
+                # SIBIMA Section
                 if not df_sibima_hidden.empty:
                     with st.expander("📁 Lihat Rekapitulasi Transaksi Internal - SIBIMA"):
                         s_transaksi = df_sibima_hidden[po_cust_col].nunique() if (po_cust_col and not df_sibima_hidden[po_cust_col].dropna().empty) else len(df_sibima_hidden)
@@ -203,7 +221,7 @@ if mode == "🏢 Central Procurement & Interco":
                         
                         st.dataframe(df_sibima_hidden, use_container_width=True, height=250)
 
-                # Expander 2: AMIN
+                # AMIN Section
                 if not df_amin_hidden.empty:
                     with st.expander("📁 Lihat Rekapitulasi Transaksi Internal - AMIN"):
                         a_transaksi = df_amin_hidden[po_cust_col].nunique() if (po_cust_col and not df_amin_hidden[po_cust_col].dropna().empty) else len(df_amin_hidden)
@@ -221,25 +239,29 @@ if mode == "🏢 Central Procurement & Interco":
 
             st.divider()
             
-            st.write("#### 🍩 Proporsi Transaksi per Status & 🏢 Proporsi RFQ per Kategori Sales")
-            v_col1, v_col2 = st.columns(2)
-            with v_col1:
-                if status_col:
-                    status_counts = df_order_filtered[status_col].value_counts().reset_index()
-                    status_counts.columns = ['Status', 'Jumlah']
-                    donut_chart = alt.Chart(status_counts).mark_arc(innerRadius=50).encode(theta=alt.Theta(field="Jumlah", type="quantitative"), color=alt.Color(field="Status", type="nominal"), tooltip=['Status', 'Jumlah']).properties(height=300)
-                    st.altair_chart(donut_chart, use_container_width=True)
-            with v_col2:
-                kat_rfq_col = next((c for c in df_rfq.columns if 'KATEGORI' in str(c).upper()), None)
-                if kat_rfq_col:
-                    kat_counts = df_rfq[kat_rfq_col].value_counts().reset_index()
-                    kat_counts.columns = ['Kategori', 'Jumlah RFQ']
-                    donut_kat = alt.Chart(kat_counts).mark_arc(innerRadius=50).encode(
-                        theta=alt.Theta(field="Jumlah RFQ", type="quantitative"),
-                        color=alt.Color(field="Kategori", type="nominal"),
-                        tooltip=['Kategori', 'Jumlah RFQ']
-                    ).properties(height=300)
-                    st.altair_chart(donut_kat, use_container_width=True)
+            # --- SECTION GRAFIK DONAT (DISUSUN KE BAWAH & AMAN DI BERBAGAI LAYAR) ---
+            st.write("#### 🍩 Proporsi Transaksi per Status")
+            if status_col:
+                status_counts = df_order_filtered[status_col].value_counts().reset_index()
+                status_counts.columns = ['Status', 'Jumlah']
+                donut_chart = alt.Chart(status_counts).mark_arc(innerRadius=60).encode(
+                    theta=alt.Theta(field="Jumlah", type="quantitative"), 
+                    color=alt.Color(field="Status", type="nominal", legend=alt.Legend(orient="right")), 
+                    tooltip=['Status', 'Jumlah']
+                ).properties(height=350, width="container")
+                st.altair_chart(donut_chart, use_container_width=True)
+
+            st.write("#### 🏢 Proporsi RFQ per Kategori Sales")
+            kat_rfq_col = next((c for c in df_rfq.columns if 'KATEGORI' in str(c).upper()), None)
+            if kat_rfq_col:
+                kat_counts = df_rfq[kat_rfq_col].value_counts().reset_index()
+                kat_counts.columns = ['Kategori', 'Jumlah RFQ']
+                donut_kat = alt.Chart(kat_counts).mark_arc(innerRadius=60).encode(
+                    theta=alt.Theta(field="Jumlah RFQ", type="quantitative"),
+                    color=alt.Color(field="Kategori", type="nominal", legend=alt.Legend(orient="right")),
+                    tooltip=['Kategori', 'Jumlah RFQ']
+                ).properties(height=350, width="container")
+                st.altair_chart(donut_kat, use_container_width=True)
 
     # --- TAB 2: MONITORING RFQ (PENDING & KENDALA) ---
     with tab_i2:
