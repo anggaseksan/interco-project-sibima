@@ -180,16 +180,16 @@ if mode == "🏢 Central Procurement & Interco":
                     else:
                         internal_transaksi = len(df_internal_hidden)
                         
-                    internal_nominal_exc = df_internal_hidden['PRICE_CLEAN'].sum()
-                    if internal_nominal_exc == 0 and price_col:
-                        internal_nominal_exc = df_internal_hidden[price_col].apply(clean_price).sum()
+                    # Mengambil nilai dari total harga beli (HPP) untuk belanja internal
+                    internal_hpp_exc = df_internal_hidden['HPP_CLEAN'].sum()
+                    if internal_hpp_exc == 0 and hpp_col:
+                        internal_hpp_exc = df_internal_hidden[hpp_col].apply(clean_price).sum()
                         
-                    internal_nominal_inc = internal_nominal_exc * 1.11
                     internal_item = df_internal_hidden['QTY_CLEAN'].sum()
                     
                     sc1, sc2, sc3 = st.columns(3)
                     sc1.metric("Total Transaksi Internal", internal_transaksi)
-                    sc2.metric("Total Nilai Internal (Exc PPN)", f"Rp {internal_nominal_exc:,.0f}".replace(',', '.'))
+                    sc2.metric("Total Belanja Internal (HPP)", f"Rp {internal_hpp_exc:,.0f}".replace(',', '.'))
                     sc3.metric("Total QTY Internal", f"{internal_item:,.0f}")
                     
                     st.dataframe(df_internal_hidden, use_container_width=True, height=250)
