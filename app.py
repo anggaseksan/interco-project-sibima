@@ -172,27 +172,52 @@ if mode == "🏢 Central Procurement & Interco":
             m6.metric("Total Item QTY", f"{total_item:,.0f}")
             m7.metric("Kategori Terbanyak", top_kategori)
             
-            # 2. Section Tersembunyi (Hidden Expander) untuk Rekapitulasi Internal (SIBIMA & AMIN)
+            # 2. Section Tersembunyi (Hidden Expander) untuk Rekapitulasi Internal (DIPISAH SIBIMA & AMIN)
             if not df_internal_hidden.empty:
-                with st.expander("📁 Lihat Rekapitulasi Transaksi Internal (SIBIMA & AMIN)"):
-                    if po_cust_col and not df_internal_hidden[po_cust_col].dropna().empty:
-                        internal_transaksi = df_internal_hidden[po_cust_col].nunique()
-                    else:
-                        internal_transaksi = len(df_internal_hidden)
+                # Filter khusus SIBIMA
+                def is_sibima_row(row):
+                    val = str(row[kat_col_order]).upper().strip() if kat_col_order else ""
+                    return ('SIBIMA BERKARYA MANDIRI' in val) or (val == 'GA SIBIMA') or ('PT. SIBIMA' in val and 'TECH' not in val)
+                
+                # Filter khusus AMIN
+                def is_amin_row(row):
+                    val = str(row[kat_col_order]).upper().strip() if kat_col_order else ""
+                    return ('AGRO MINA INTI NUSANTARA' in val) or (val in ['AMIN', 'GA AMIIN', 'GA AMIN']) or ('AGRO MINA' in val)
+
+                df_sibima_hidden = df_internal_hidden[df_internal_hidden.apply(is_sibima_row, axis=1)]
+                df_amin_hidden = df_internal_hidden[df_internal_hidden.apply(is_amin_row, axis=1)]
+
+                # Expander 1: SIBIMA
+                if not df_sibima_hidden.empty:
+                    with st.expander("📁 Lihat Rekapitulasi Transaksi Internal - SIBIMA"):
+                        s_transaksi = df_sibima_hidden[po_cust_col].nunique() if (po_cust_col and not df_sibima_hidden[po_cust_col].dropna().empty) else len(df_sibima_hidden)
+                        s_hpp = df_sibima_hidden['HPP_CLEAN'].sum()
+                        if s_hpp == 0 and hpp_col:
+                            s_hpp = df_sibima_hidden[hpp_col].apply(clean_price).sum()
+                        s_item = df_sibima_hidden['QTY_CLEAN'].sum()
+
+                        sc1, sc2, sc3 = st.columns(3)
+                        sc1.metric("Total Transaksi SIBIMA", s_transaksi)
+                        sc2.metric("Total Belanja SIBIMA (HPP)", f"Rp {s_hpp:,.0f}".replace(',', '.'))
+                        sc3.metric("Total QTY SIBIMA", f"{s_item:,.0f}")
                         
-                    # Mengambil nilai dari total harga beli (HPP) untuk belanja internal
-                    internal_hpp_exc = df_internal_hidden['HPP_CLEAN'].sum()
-                    if internal_hpp_exc == 0 and hpp_col:
-                        internal_hpp_exc = df_internal_hidden[hpp_col].apply(clean_price).sum()
+                        st.dataframe(df_sibima_hidden, use_container_width=True, height=250)
+
+                # Expander 2: AMIN
+                if not df_amin_hidden.empty:
+                    with st.expander("📁 Lihat Rekapitulasi Transaksi Internal - AMIN"):
+                        a_transaksi = df_amin_hidden[po_cust_col].nunique() if (po_cust_col and not df_amin_hidden[po_cust_col].dropna().empty) else len(df_amin_hidden)
+                        a_hpp = df_amin_hidden['HPP_CLEAN'].sum()
+                        if a_hpp == 0 and hpp_col:
+                            a_hpp = df_amin_hidden[hpp_col].apply(clean_price).sum()
+                        a_item = df_amin_hidden['QTY_CLEAN'].sum()
+
+                        ac1, ac2, ac3 = st.columns(3)
+                        ac1.metric("Total Transaksi AMIN", a_transaksi)
+                        ac2.metric("Total Belanja AMIN (HPP)", f"Rp {a_hpp:,.0f}".replace(',', '.'))
+                        ac3.metric("Total QTY AMIN", f"{a_item:,.0f}")
                         
-                    internal_item = df_internal_hidden['QTY_CLEAN'].sum()
-                    
-                    sc1, sc2, sc3 = st.columns(3)
-                    sc1.metric("Total Transaksi Internal", internal_transaksi)
-                    sc2.metric("Total Belanja Internal (HPP)", f"Rp {internal_hpp_exc:,.0f}".replace(',', '.'))
-                    sc3.metric("Total QTY Internal", f"{internal_item:,.0f}")
-                    
-                    st.dataframe(df_internal_hidden, use_container_width=True, height=250)
+                        st.dataframe(df_amin_hidden, use_container_width=True, height=250)
 
             st.divider()
             
