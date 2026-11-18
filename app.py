@@ -263,7 +263,7 @@ if mode == "🏢 Central Procurement & Interco":
                 ).properties(height=350, width="container")
                 st.altair_chart(donut_kat, use_container_width=True)
 
-    # --- TAB 2: MONITORING RFQ (PENDING & KENDALA) ---
+# --- TAB 2: MONITORING RFQ (PENDING & KENDALA) ---
     with tab_i2:
         st.write("### 🔍 Monitoring RFQ: Belum Dikerjakan & Kendala")
         st.markdown("Menganalisis data dari `MASTER RFQ` untuk melacak RFQ yang statusnya belum selesai, tertunda, atau memiliki kendala operasional.")
@@ -274,13 +274,22 @@ if mode == "🏢 Central Procurement & Interco":
             def is_pending_rfq(row):
                 if stat_rfq_col and pd.notna(row[stat_rfq_col]):
                     val = str(row[stat_rfq_col]).upper().strip()
-                    # Jika statusnya sudah selesai (COMPLETE, DONE, CLOSED, SELESAI, PO), maka BUKAN pending
                     if any(k in val for k in ['COMPLETE', 'DONE', 'CLOSED', 'SELESAI', 'PO', 'CLOSE']):
                         return False
-                # Jika statusnya PROCESS, REQUEST, PPENDING, CANCEL, atau kosong, masukkan ke list pending/kendala
                 return True
 
             df_rfq_pending = df_rfq[df_rfq.apply(is_pending_rfq, axis=1)].copy() if stat_rfq_col else df_rfq.copy()
+
+            # --- MEMINDAHKAN KOLOM KENDALA KE DEPAN ---
+            kendala_col = next((c for c in df_rfq_pending.columns if 'KENDALA' in str(c).upper()), None)
+            if kendala_col:
+                # Ambil daftar kolom selain KENDALA
+                other_cols = [col for col in df_rfq_pending.columns if col != kendala_col]
+                # Letakkan KENDALA di posisi setelah STATUS (atau di indeks ke-2)
+                # Sesuaikan letaknya dengan memasukkan kendala_col di antara list kolom
+                status_idx = other_cols.index(stat_rfq_col) if stat_rfq_col in other_cols else 1
+                new_cols_order = other_cols[:status_idx+1] + [kendala_col] + other_cols[status_idx+1:]
+                df_rfq_pending = df_rfq_pending[new_cols_order]
 
             m_rfq1, m_rfq2 = st.columns(2)
             m_rfq1.metric("Total RFQ Masuk", len(df_rfq))
