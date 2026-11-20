@@ -31,6 +31,32 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+BULAN_ID = {
+    1: "Januari", 2: "Februari", 3: "Maret", 4: "April",
+    5: "Mei", 6: "Juni", 7: "Juli", 8: "Agustus",
+    9: "September", 10: "Oktober", 11: "November", 12: "Desember"
+}
+
+def _fmt_tgl_indo(val):
+    if pd.isna(val):
+        return val
+    if isinstance(val, str) and any(b in val for b in BULAN_ID.values()):
+        return val.strip()
+    dt = pd.to_datetime(val, errors='coerce')
+    if pd.isna(dt):
+        return val
+    return f"{dt.day} {BULAN_ID[dt.month]} {dt.year}"
+
+def format_date_columns(df):
+    if df is None or df.empty:
+        return df
+    df_out = df.copy()
+    for col in df_out.columns:
+        col_u = str(col).upper()
+        if any(k in col_u for k in ['TGL', 'TANGGAL', 'DATE']):
+            df_out[col] = df_out[col].astype(object).apply(_fmt_tgl_indo)
+    return df_out
+
 # Fungsi load data dengan cache dinamis
 @st.cache_data(ttl=10)
 def load_data(url, header_row=0):
@@ -40,21 +66,6 @@ def load_data(url, header_row=0):
         return df
     except Exception as e:
         return pd.DataFrame()
-
-# Fungsi format kolom tanggal agar tampil tanpa jam (00:00:00)
-def format_date_columns(df, date_format="%Y-%m-%d"):
-    if df is None or df.empty:
-        return df
-    df_out = df.copy()
-    for col in df_out.columns:
-        col_u = str(col).upper()
-        if any(k in col_u for k in ['TGL', 'TANGGAL', 'DATE']):
-            parsed = pd.to_datetime(df_out[col], errors='coerce')
-            mask_dt = parsed.notna()
-            if mask_dt.any():
-                df_out[col] = df_out[col].astype(object)
-                df_out.loc[mask_dt, col] = parsed.loc[mask_dt].dt.strftime(date_format)
-    return df_out
 
 # SIDEBAR NAVIGATION
 st.sidebar.image("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSuPAMy4KN4jFEnYc3C6xHVWnXsylZ6c0wMrIkFSuRY3IphB8EOdoVf1gII&s=10", width=100)
