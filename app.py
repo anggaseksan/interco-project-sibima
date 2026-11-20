@@ -360,39 +360,98 @@ if mode == "🏢 Central Procurement & Interco":
         else:
             st.warning("Data Master RFQ kosong.")
 
-    # --- TAB 3: KONVERSI SQ KE PO ---
+    # --- TAB 3: KONVERSI SQ KE PO (BERDASARKAN NO SQ DI MASTER RFQ -> MASTER ORDER) ---
     with tab_i3:
         st.write("### 📈 Analisis Konversi SQ (Quotation) ke PO (Order)")
-        st.markdown("Menggabungkan data dari `MASTER RFQ` dan `MASTER ORDER` untuk melihat persentase SQ yang berhasil tembus menjadi Purchase Order (PO).")
+        st.markdown("Mengecek setiap **NO SQ** yang ada di `MASTER RFQ` apakah sudah masuk ke `MASTER ORDER`.")
 
-        if not df_rfq.empty and not df_order.empty:
-            total_rfq_count = len(df_rfq)
-            total_order_count = len(df_order)
-            conversion_rate = (total_order_count / total_rfq_count * 100) if total_rfq_count > 0 else 0
+        sq_rfq_col = next((c for c in df_rfq.columns if 'NO SQ' in str(c).upper() or str(c).upper().strip() == 'SQ'), None)
+        sq_order_col = next((c for c in df_order.columns if 'NO SQ' in str(c).upper() or str(c).upper().strip() == 'SQ'), None)
 
-            kc1, kc2, kc3 = st.columns(3)
-            kc1.metric("Total SQ / RFQ Diajukan", total_rfq_count)
-            kc2.metric("Total PO / Order Berhasil", total_order_count)
-            kc3.metric("Conversion Rate (%)", f"{conversion_rate:.2f}%")
+        if not df_rfq.empty and not df_order.empty and sq_rfq_col and sq_order_col:
+            rfq_sq_series = df_rfq[sq_rfq_col].dropna().astype(str).str.strip()
+            rfq_sq_series = rfq_sq_series[rfq_sq_series != '']
+
+            order_sq_series = df_order[sq_order_col].dropna().astype(str).str.strip()
+            order_sq_series = order_sq_series[order_sq_series != '']
+            order_sq_set = set(order_sq_series.unique())
+
+            unique_rfq_sq = sorted(list(rfq_sq_series.unique()))
+            total_sq_rfq = len(unique_rfq_sq)
+            matched_sq_list = [sq for sq in unique_rfq_sq if sq in order_sq_set]
+            unmatched_sq_list = [sq for sq in unique_rfq_sq if sq not in order_sq_set]
+
+            masuk_order_count = len(matched_sq_list)
+            belum_masuk_count = len(unmatched_sq_list)
+            conversion_rate = (masuk_order_count / total_sq_rfq * 100) if total_sq_rfq > 0 else 0
+
+            kc1, kc2, kc3, kc4 = st.columns(4)
+            kc1.metric("Total NO SQ Unik (Master RFQ)", total_sq_rfq)
+            kc2.metric("SQ Masuk Master Order", masuk_order_count)
+            kc3.metric("SQ Belum Masuk Order", belum_masuk_count)
+            kc4.metric("Conversion Rate SQ -> Order", f"{conversion_rate:.2f}%")
 
             st.divider()
 
-            st.write("#### 📊 Grafik Ringkasan Konversi SQ ke PO")
+            # Tabel detail per NO SQ dari MASTER RFQ
+            kat_rfq_c = next((c for c in df_rfq.columns if 'KATEGORI' in str(c).upper()), None)
+            cust_rfq_c = next((c for c in df_rfq.columns if 'CUSTOMER' in str(c).upper()), None)
+            stat_rfq_c = next((c for c in df_rfq.columns if 'STATUS' in str(c).upper()), None)
+
+            df_rfq_sq_valid = df_rfq[df_rfq[sq_rfq_col].notna()].copy()
+            df_rfq_sq_valid['NO_SQ_CLEAN'] = df_rfq_sq_valid[sq_rfq_col].astype(str).str.strip()
+            df_rfq_sq_valid = df_rfq_sq_valid[df_rfq_sq_valid['NO_SQ_CLEAN'] != '']
+
+            sq_rows = []
+            for sq_val in unique_rfq_sq:
+                sub = df_rfq_sq_valid[df_rfq_sq_valid['NO_SQ_CLEAN'] == sq_val]
+                is_in_order = sq_val in order_sq_set
+                sq_rows.append({
+                    "NO SQ": sq_val,
+                    "Status Masuk Order": "Masuk Order" if is_in_order else "Belum Masuk Order",
+                    "Jumlah Item RFQ": len(sub),
+                    "Kategori": ", ".join(sorted(set(sub[kat_rfq_c].dropna().astype(str)))) if kat_rfq_c else "-",
+                    "Customer": ", ".join(sorted(set(sub[cust_rfq_c].dropna().astype(str)))) if cust_rfq_c else "-",
+                    "Status RFQ": ", ".join(sorted(set(sub[stat_rfq_c].dropna().astype(str)))) if stat_rfq_c else "-"
+                })
+
+            df_sq_track = pd.DataFrame(sq_rows)
+
+            filter_sq_status = st.selectbox(
+                "🔍 Filter Status SQ pada Master Order:",
+                ["Semua", "Masuk Order", "Belum Masuk Order"],
+                key="sq_track_filter"
+            )
+            if filter_sq_status != "Semua":
+                df_sq_track_view = df_sq_track[df_sq_track["Status Masuk Order"] == filter_sq_status]
+            else:
+                df_sq_track_view = df_sq_track
+
+            st.write("#### 📊 Ringkasan SQ (Master RFQ) Masuk vs Belum Masuk Order")
             conv_summary = pd.DataFrame({
-                'Tahapan': ['Total SQ / RFQ', 'Berhasil Jadi PO'],
-                'Jumlah': [total_rfq_count, total_order_count]
+                'Status': ['Masuk Order', 'Belum Masuk Order'],
+                'Jumlah NO SQ': [masuk_order_count, belum_masuk_count]
             })
-            chart_conv = alt.Chart(conv_summary).mark_bar(color='#2ca02c').encode(
-                x=alt.X('Tahapan:N', sort=None),
-                y=alt.Y('Jumlah:Q', title='Jumlah Dokumen'),
-                tooltip=['Tahapan', 'Jumlah']
+            chart_conv = alt.Chart(conv_summary).mark_bar().encode(
+                x=alt.X('Status:N', sort=None, title='Status di Master Order'),
+                y=alt.Y('Jumlah NO SQ:Q', title='Jumlah NO SQ Unik'),
+                color=alt.Color('Status:N', scale=alt.Scale(domain=['Masuk Order', 'Belum Masuk Order'], range=['#2ca02c', '#d62728']), legend=None),
+                tooltip=['Status', 'Jumlah NO SQ']
             ).properties(height=300)
             st.altair_chart(chart_conv, use_container_width=True)
 
-            st.write("#### 📑 Detail Laporan Master Order")
-            st.dataframe(format_date_columns(df_order.head(100)), use_container_width=True, height=300)
+            st.write("#### 📑 Daftar Pelacakan NO SQ dari Master RFQ ke Master Order")
+            st.dataframe(df_sq_track_view, use_container_width=True, height=380)
+
+            csv_sq_track = df_sq_track_view.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Download Laporan Tracking SQ ke Order (CSV)",
+                data=csv_sq_track,
+                file_name="Tracking_SQ_ke_Master_Order.csv",
+                mime="text/csv"
+            )
         else:
-            st.warning("Data RFQ atau Order tidak lengkap untuk melakukan analisis konversi.")
+            st.warning("Data RFQ atau Order kosong, atau kolom NO SQ tidak ditemukan.")
 
     # --- TAB 4: ANALISIS VENDOR ---
     with tab_i4:
