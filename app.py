@@ -41,6 +41,21 @@ def load_data(url, header_row=0):
     except Exception as e:
         return pd.DataFrame()
 
+# Fungsi format kolom tanggal agar tampil tanpa jam (00:00:00)
+def format_date_columns(df, date_format="%Y-%m-%d"):
+    if df is None or df.empty:
+        return df
+    df_out = df.copy()
+    for col in df_out.columns:
+        col_u = str(col).upper()
+        if any(k in col_u for k in ['TGL', 'TANGGAL', 'DATE']):
+            parsed = pd.to_datetime(df_out[col], errors='coerce')
+            mask_dt = parsed.notna()
+            if mask_dt.any():
+                df_out[col] = df_out[col].astype(object)
+                df_out.loc[mask_dt, col] = parsed.loc[mask_dt].dt.strftime(date_format)
+    return df_out
+
 # SIDEBAR NAVIGATION
 st.sidebar.image("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSuPAMy4KN4jFEnYc3C6xHVWnXsylZ6c0wMrIkFSuRY3IphB8EOdoVf1gII&s=10", width=100)
 st.sidebar.title("Navigasi Central Procurement & Project")
@@ -219,7 +234,7 @@ if mode == "🏢 Central Procurement & Interco":
                         sc2.metric("Total Belanja SIBIMA (HPP)", f"Rp {s_hpp:,.0f}".replace(',', '.'))
                         sc3.metric("Total QTY SIBIMA", f"{s_item:,.0f}")
                         
-                        st.dataframe(df_sibima_hidden, use_container_width=True, height=250)
+                        st.dataframe(format_date_columns(df_sibima_hidden), use_container_width=True, height=250)
 
                 # AMIN Section
                 if not df_amin_hidden.empty:
@@ -235,7 +250,7 @@ if mode == "🏢 Central Procurement & Interco":
                         ac2.metric("Total Belanja AMIN (HPP)", f"Rp {a_hpp:,.0f}".replace(',', '.'))
                         ac3.metric("Total QTY AMIN", f"{a_item:,.0f}")
                         
-                        st.dataframe(df_amin_hidden, use_container_width=True, height=250)
+                        st.dataframe(format_date_columns(df_amin_hidden), use_container_width=True, height=250)
 
             st.divider()
             
@@ -283,7 +298,6 @@ if mode == "🏢 Central Procurement & Interco":
             def is_pending_hold_followup(row):
                 status_val = str(row[stat_rfq_col]).upper().strip() if (stat_rfq_col and pd.notna(row[stat_rfq_col])) else ""
                 kendala_val = str(row[kendala_col]).upper().strip() if (kendala_col and pd.notna(row[kendala_col])) else ""
-                # Jika status PENDING dan kendala karena di-hold (belum CLOSE), anggap sementara selesai tapi perlu follow-up sampai CLOSE
                 if 'PENDING' in status_val and 'HOLD' in kendala_val and 'CLOSE' not in status_val:
                     return True
                 return False
@@ -293,7 +307,6 @@ if mode == "🏢 Central Procurement & Interco":
                     return False
                 if stat_rfq_col and pd.notna(row[stat_rfq_col]):
                     val = str(row[stat_rfq_col]).upper().strip()
-                    # Mengecualikan COMPLETE, DONE, CLOSED, SELESAI, PO, CLOSE, dan CANCEL
                     if any(k in val for k in ['COMPLETE', 'DONE', 'CLOSED', 'SELESAI', 'PO', 'CLOSE', 'CANCEL']):
                         return False
                 return True
@@ -311,9 +324,9 @@ if mode == "🏢 Central Procurement & Interco":
 
             st.divider()
             st.write("#### 📋 Daftar RFQ Belum Selesai & Kendala")
-            st.dataframe(df_rfq_pending, use_container_width=True, height=400)
+            st.dataframe(format_date_columns(df_rfq_pending), use_container_width=True, height=400)
 
-            csv_rfq_pending = df_rfq_pending.to_csv(index=False).encode('utf-8')
+            csv_rfq_pending = format_date_columns(df_rfq_pending).to_csv(index=False).encode('utf-8')
             st.download_button(
                 label="📥 Download Laporan RFQ Pending (CSV)",
                 data=csv_rfq_pending,
@@ -324,8 +337,8 @@ if mode == "🏢 Central Procurement & Interco":
             if not df_rfq_hold_followup.empty:
                 st.divider()
                 with st.expander("📌 Daftar RFQ Di-hold (Sementara Selesai — Perlu Follow-up sampai CLOSE)"):
-                    st.dataframe(df_rfq_hold_followup, use_container_width=True, height=300)
-                    csv_rfq_hold = df_rfq_hold_followup.to_csv(index=False).encode('utf-8')
+                    st.dataframe(format_date_columns(df_rfq_hold_followup), use_container_width=True, height=300)
+                    csv_rfq_hold = format_date_columns(df_rfq_hold_followup).to_csv(index=False).encode('utf-8')
                     st.download_button(
                         label="📥 Download Laporan RFQ Di-hold / Follow-up (CSV)",
                         data=csv_rfq_hold,
@@ -366,7 +379,7 @@ if mode == "🏢 Central Procurement & Interco":
             st.altair_chart(chart_conv, use_container_width=True)
 
             st.write("#### 📑 Detail Laporan Master Order")
-            st.dataframe(df_order.head(100), use_container_width=True, height=300)
+            st.dataframe(format_date_columns(df_order.head(100)), use_container_width=True, height=300)
         else:
             st.warning("Data RFQ atau Order tidak lengkap untuk melakukan analisis konversi.")
 
@@ -422,9 +435,9 @@ if mode == "🏢 Central Procurement & Interco":
                 df_interco_out = df_interco_out[df_interco_out[vend_col_in].astype(str) == pilih_v_in]
 
             st.metric("Total Transaksi Interco Outstanding", len(df_interco_out))
-            st.dataframe(df_interco_out, use_container_width=True, height=450)
+            st.dataframe(format_date_columns(df_interco_out), use_container_width=True, height=450)
 
-            csv_in_out = df_interco_out.to_csv(index=False).encode('utf-8')
+            csv_in_out = format_date_columns(df_interco_out).to_csv(index=False).encode('utf-8')
             st.download_button(
                 label="📥 Download Laporan Outstanding Interco (CSV)",
                 data=csv_in_out,
