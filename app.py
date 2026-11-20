@@ -270,8 +270,27 @@ if mode == "🏢 Central Procurement & Interco":
 
         if not df_rfq.empty:
             stat_rfq_col = next((c for c in df_rfq.columns if 'STATUS' in str(c).upper()), None)
+            kendala_col = next((c for c in df_rfq.columns if 'KENDALA' in str(c).upper()), None)
+
+            def reorder_kendala_first(df_target):
+                if kendala_col and kendala_col in df_target.columns:
+                    other_cols = [col for col in df_target.columns if col != kendala_col]
+                    status_idx = other_cols.index(stat_rfq_col) if (stat_rfq_col and stat_rfq_col in other_cols) else 1
+                    new_cols_order = other_cols[:status_idx+1] + [kendala_col] + other_cols[status_idx+1:]
+                    return df_target[new_cols_order]
+                return df_target
+
+            def is_pending_hold_followup(row):
+                status_val = str(row[stat_rfq_col]).upper().strip() if (stat_rfq_col and pd.notna(row[stat_rfq_col])) else ""
+                kendala_val = str(row[kendala_col]).upper().strip() if (kendala_col and pd.notna(row[kendala_col])) else ""
+                # Jika status PENDING dan kendala karena di-hold (belum CLOSE), anggap sementara selesai tapi perlu follow-up sampai CLOSE
+                if 'PENDING' in status_val and 'HOLD' in kendala_val and 'CLOSE' not in status_val:
+                    return True
+                return False
 
             def is_pending_rfq(row):
+                if is_pending_hold_followup(row):
+                    return False
                 if stat_rfq_col and pd.notna(row[stat_rfq_col]):
                     val = str(row[stat_rfq_col]).upper().strip()
                     # Mengecualikan COMPLETE, DONE, CLOSED, SELESAI, PO, CLOSE, dan CANCEL
@@ -280,18 +299,15 @@ if mode == "🏢 Central Procurement & Interco":
                 return True
 
             df_rfq_pending = df_rfq[df_rfq.apply(is_pending_rfq, axis=1)].copy() if stat_rfq_col else df_rfq.copy()
+            df_rfq_hold_followup = df_rfq[df_rfq.apply(is_pending_hold_followup, axis=1)].copy() if stat_rfq_col else pd.DataFrame(columns=df_rfq.columns)
 
-            # Memindahkan Kolom KENDALA ke posisi depan (setelah Status)
-            kendala_col = next((c for c in df_rfq_pending.columns if 'KENDALA' in str(c).upper()), None)
-            if kendala_col:
-                other_cols = [col for col in df_rfq_pending.columns if col != kendala_col]
-                status_idx = other_cols.index(stat_rfq_col) if (stat_rfq_col and stat_rfq_col in other_cols) else 1
-                new_cols_order = other_cols[:status_idx+1] + [kendala_col] + other_cols[status_idx+1:]
-                df_rfq_pending = df_rfq_pending[new_cols_order]
+            df_rfq_pending = reorder_kendala_first(df_rfq_pending)
+            df_rfq_hold_followup = reorder_kendala_first(df_rfq_hold_followup)
 
-            m_rfq1, m_rfq2 = st.columns(2)
+            m_rfq1, m_rfq2, m_rfq3 = st.columns(3)
             m_rfq1.metric("Total RFQ Masuk", len(df_rfq))
             m_rfq2.metric("RFQ Belum Selesai / Pending", len(df_rfq_pending))
+            m_rfq3.metric("RFQ Di-hold (Follow-up s/d Close)", len(df_rfq_hold_followup))
 
             st.divider()
             st.write("#### 📋 Daftar RFQ Belum Selesai & Kendala")
@@ -304,6 +320,19 @@ if mode == "🏢 Central Procurement & Interco":
                 file_name="RFQ_Pending_Kendala.csv",
                 mime="text/csv"
             )
+
+            if not df_rfq_hold_followup.empty:
+                st.divider()
+                with st.expander("📌 Daftar RFQ Di-hold (Sementara Selesai — Perlu Follow-up sampai CLOSE)"):
+                    st.dataframe(df_rfq_hold_followup, use_container_width=True, height=300)
+                    csv_rfq_hold = df_rfq_hold_followup.to_csv(index=False).encode('utf-8')
+                    st.download_button(
+                        label="📥 Download Laporan RFQ Di-hold / Follow-up (CSV)",
+                        data=csv_rfq_hold,
+                        file_name="RFQ_Hold_FollowUp.csv",
+                        mime="text/csv",
+                        key="dl_rfq_hold"
+                    )
         else:
             st.warning("Data Master RFQ kosong.")
 
