@@ -8,23 +8,19 @@ st.set_page_config(page_title="SIBIMA Performance Dashboard", layout="wide", pag
 # Tambahan CSS Global untuk Responsivitas & Mencegah Konten Terpotong di Berbagai Ukuran Layar
 st.markdown("""
     <style>
-        /* Memastikan kontainer utama fleksibel dan tidak meluber keluar layar */
         .main .block-container {
             padding-left: 2rem;
             padding-right: 2rem;
             max-width: 100%;
         }
-        /* Responsivitas untuk card metric agar teks menyesuaikan lebar */
         [data-testid="stMetricValue"] {
             font-size: clamp(1.2rem, 2.5vw, 1.8rem) !important;
             word-break: break-word;
         }
-        /* Membuat tabel/dataframe responsif dengan scroll horizontal otomatis jika layar sempit */
         [data-testid="stDataFrame"] {
             width: 100% !important;
             overflow-x: auto;
         }
-        /* Mengatur agar elemen multiselect dan dropdown menyesuaikan kontainer */
         .stMultiSelect, .stSelectbox, .stDateInput {
             width: 100% !important;
         }
@@ -56,6 +52,27 @@ def format_date_columns(df):
         if any(k in col_u for k in ['TGL', 'TANGGAL', 'DATE']):
             df_out[col] = df_out[col].astype(object).apply(_fmt_tgl_indo)
     return df_out
+
+def _has_value(series):
+    if series is None:
+        return pd.Series(False, index=[])
+    s_str = series.fillna('').astype(str).str.strip().str.upper()
+    return ~s_str.isin(['', 'NAN', 'NAT', 'NONE', '-'])
+
+def is_internal_row(row, kat_col=None, cust_col=None):
+    kat = str(row[kat_col]).upper().strip() if (kat_col and pd.notna(row.get(kat_col))) else ""
+    cust = str(row[cust_col]).upper().strip() if (cust_col and pd.notna(row.get(cust_col))) else ""
+    if 'SIBIMATECH' in kat or 'SIBIMA TECH' in kat or 'SIBIMATECH' in cust or 'SIBIMA TECH' in cust:
+        return False
+    return (
+        kat in ['SIBIMA', 'GA SIBIMA', 'AMIN', 'GA AMIIN', 'GA AMIN']
+        or 'SIBIMA BERKARYA MANDIRI' in kat
+        or 'SIBIMA BERKARYA MANDIRI' in cust
+        or 'AGRO MINA INTI NUSANTARA' in kat
+        or 'AGRO MINA INTI NUSANTARA' in cust
+        or 'AGRO MINA' in kat
+        or 'AGRO MINA' in cust
+    )
 
 # Fungsi load data dengan cache dinamis
 @st.cache_data(ttl=10)
@@ -90,7 +107,6 @@ if mode == "🏢 Central Procurement & Interco":
     df_rfq = load_data(URL_RFQ, header_row=1)
     df_order = load_data(URL_ORDER, header_row=0)
 
-    # Pemisahan Tab Interco
     tab_i1, tab_i2, tab_i3, tab_i4, tab_i5 = st.tabs([
         "📊 Overview & Detail Transaksi", 
         "🔍 Monitoring RFQ (Pending & Kendala)", 
@@ -102,30 +118,36 @@ if mode == "🏢 Central Procurement & Interco":
     # --- TAB 1: OVERVIEW & DETAIL TRANSAKSI ---
     with tab_i1:
         if not df_rfq.empty and not df_order.empty:
-            df_rfq['TANGGAL RFQ'] = pd.to_datetime(df_rfq['TANGGAL RFQ'], errors='coerce')
-            min_date = df_rfq['TANGGAL RFQ'].min().date() if not df_rfq['TANGGAL RFQ'].isnull().all() else datetime.today().date()
-            max_date = df_rfq['TANGGAL RFQ'].max().date() if not df_rfq['TANGGAL RFQ'].isnull().all() else datetime.today().date()
-            
+            tgl_rfq_col = next((c for c in df_rfq.columns if 'TANGGAL RFQ' in str(c).upper() or 'TGL RFQ' in str(c).upper()), None)
+            if tgl_rfq_col:
+                df_rfq[tgl_rfq_col] = pd.to_datetime(df_rfq[tgl_rfq_col], errors='coerce')
+                min_date = df_rfq[tgl_rfq_col].min().date() if not df_rfq[tgl_rfq_col].isnull().all() else datetime.today().date()
+                max_date = df_rfq[tgl_rfq_col].max().date() if not df_rfq[tgl_rfq_col].isnull().all() else datetime.today().date()
+            else:
+                min_date = max_date = datetime.today().date()
+
             kat_col_order = next((c for c in df_order.columns if 'KATEGORI' in str(c).upper()), None)
+            cust_col_order = next((c for c in df_order.columns if 'CUSTOMER' in str(c).upper() and 'PIC' not in str(c).upper() and 'NO' not in str(c).upper() and 'TGL' not in str(c).upper()), None)
+            status_col = next((c for c in df_order.columns if 'STATUS' in str(c).upper()), None)
+
             list_cust_options = sorted(list(df_order[kat_col_order].dropna().unique())) if kat_col_order and not df_order[kat_col_order].dropna().empty else []
+            list_status_options = sorted(list(df_order[status_col].dropna().unique())) if status_col and not df_order[status_col].dropna().empty else []
 
             st.write("### Filter Dashboard Interco")
             f_col1, f_col2, f_col3, f_col4 = st.columns(4)
             with f_col1: date_range = st.date_input("Select Date Range 📅", [min_date, max_date], key="i_date")
-            with f_col2: pilih_status = st.selectbox("Cari Status 🔍", ["Semua"] + list(df_order['STATUS'].dropna().unique()), key="i_stat")
-            with f_col3: 
-                pilih_cust = st.multiselect("Pilih Customer (Kategori) 👤", list_cust_options, key="i_cust")
-            with f_col4: pilih_no = st.text_input("Cari Nomor Transaksi (SO/PO) 🔍", key="i_no")
+            with f_col2: pilih_status = st.selectbox("Cari Status 🔍", ["Semua"] + list_status_options, key="i_stat")
+            with f_col3: pilih_cust = st.multiselect("Pilih Customer (Kategori) 👤", list_cust_options, key="i_cust")
+            with f_col4: pilih_no = st.text_input("Cari Nomor Transaksi / Item 🔍", key="i_no")
 
             df_order_filtered = df_order.copy()
-            if pilih_status != "Semua": df_order_filtered = df_order_filtered[df_order_filtered['STATUS'] == pilih_status]
-            
-            if pilih_cust and kat_col_order: 
+            if pilih_status != "Semua" and status_col:
+                df_order_filtered = df_order_filtered[df_order_filtered[status_col] == pilih_status]
+            if pilih_cust and kat_col_order:
                 df_order_filtered = df_order_filtered[df_order_filtered[kat_col_order].isin(pilih_cust)]
-                
-            if pilih_no: df_order_filtered = df_order_filtered[df_order_filtered.astype(str).apply(lambda x: x.str.contains(pilih_no, case=False, na=False)).any(axis=1)]
+            if pilih_no:
+                df_order_filtered = df_order_filtered[df_order_filtered.astype(str).apply(lambda x: x.str.contains(pilih_no, case=False, na=False)).any(axis=1)]
 
-            # Fungsi pembersihan nilai numerik/harga
             def clean_price(val):
                 if pd.isna(val): return 0.0
                 s = str(val).replace('Rp', '').replace('idr', '').strip()
@@ -139,155 +161,136 @@ if mode == "🏢 Central Procurement & Interco":
                 try: return float(s)
                 except: return 0.0
 
-            # Deteksi Kolom Berdasarkan Header Persis dari Sheet
-            qty_col = next((c for c in df_order_filtered.columns if 'QTY' in str(c).upper()), None)
-            price_col = next((c for c in df_order_filtered.columns if 'TOTAL HARGA JUAL' in str(c).upper()), None)
-            if not price_col:
-                price_col = next((c for c in df_order_filtered.columns if 'HARGA JUAL' in str(c).upper()), None)
-
-            hpp_col = next((c for c in df_order_filtered.columns if 'TOTAL HARGA BELI' in str(c).upper()), None)
-            if not hpp_col:
-                hpp_col = next((c for c in df_order_filtered.columns if 'HARGA BELI' in str(c).upper()), None)
-
+            qty_col = next((c for c in df_order_filtered.columns if str(c).upper().strip() == 'QTY' or 'QTY' in str(c).upper()), None)
+            price_col = next((c for c in df_order_filtered.columns if 'TOTAL HARGA JUAL' in str(c).upper()), None) or next((c for c in df_order_filtered.columns if 'HARGA JUAL' in str(c).upper()), None)
+            hpp_col = next((c for c in df_order_filtered.columns if 'TOTAL HARGA BELI' in str(c).upper()), None) or next((c for c in df_order_filtered.columns if 'HARGA BELI' in str(c).upper()), None)
             po_cust_col = next((c for c in df_order_filtered.columns if 'NO PO CUSTOMER' in str(c).upper() or 'PO CUSTOMER' in str(c).upper()), None)
-            status_col = next((c for c in df_order_filtered.columns if 'STATUS' in str(c).upper()), None)
+            sq_order_col = next((c for c in df_order_filtered.columns if 'NO SQ' in str(c).upper()), None)
 
             df_order_filtered['QTY_CLEAN'] = pd.to_numeric(df_order_filtered[qty_col], errors='coerce').fillna(0) if qty_col else 1.0
             df_order_filtered['PRICE_CLEAN'] = df_order_filtered[price_col].apply(clean_price) if price_col else 0.0
             df_order_filtered['HPP_CLEAN'] = df_order_filtered[hpp_col].apply(clean_price) if hpp_col else 0.0
 
-            st.divider()
-            st.write("### 📊 Detail Transaksi & Keuangan (Komersial Eksternal)")
-            
-            def is_internal_hidden_row(row):
-                if not kat_col_order: return False
-                val = str(row[kat_col_order]).upper().strip()
-                is_sibima_target = ('SIBIMA BERKARYA MANDIRI' in val) or (val == 'GA SIBIMA') or ('PT. SIBIMA' in val and 'TECH' not in val)
-                is_amin_target = ('AGRO MINA INTI NUSANTARA' in val) or (val in ['AMIN', 'GA AMIIN', 'GA AMIN']) or ('AGRO MINA' in val)
-                return is_sibima_target or is_amin_target
+            mask_internal = df_order_filtered.apply(lambda r: is_internal_row(r, kat_col_order, cust_col_order), axis=1)
+            df_internal_all = df_order_filtered[mask_internal].copy()
 
-            if kat_col_order:
-                mask_internal = df_order_filtered.apply(is_internal_hidden_row, axis=1)
-                mask_not_cancel_pending = ~df_order_filtered['STATUS'].astype(str).str.upper().isin(['CANCEL', 'PENDING'])
-                
-                df_komersial = df_order_filtered[mask_not_cancel_pending & (~mask_internal)]
-                df_internal_hidden = df_order_filtered[mask_internal]
+            if status_col:
+                mask_not_cancel_pending = ~df_order_filtered[status_col].astype(str).str.upper().str.strip().isin(['CANCEL', 'PENDING'])
             else:
-                df_komersial = df_order_filtered[
-                    (~df_order_filtered['STATUS'].astype(str).str.upper().isin(['CANCEL', 'PENDING']))
-                ]
-                df_internal_hidden = pd.DataFrame()
+                mask_not_cancel_pending = pd.Series(True, index=df_order_filtered.index)
 
-            # Metrik Keuangan
+            df_komersial = df_order_filtered[mask_not_cancel_pending & (~mask_internal)].copy()
+
+            # =========================================================
+            # BAGIAN 1: KOMERSIAL EKSTERNAL (PERMINTAAN -> SQ -> PO -> PROSES -> DITERIMA)
+            # =========================================================
+            st.divider()
+            st.write("### 📊 Ringkasan & Detail Transaksi Komersial Eksternal")
+            st.caption("Alur pantauan: Permintaan (RFQ) → Sudah SQ → Jadi PO User / Order → Proses → Sudah Diterima.")
+
+            kat_rfq_c = next((c for c in df_rfq.columns if 'KATEGORI' in str(c).upper()), None)
+            cust_rfq_c = next((c for c in df_rfq.columns if 'CUSTOMER' in str(c).upper() and 'PIC' not in str(c).upper()), None)
+            sq_rfq_c = next((c for c in df_rfq.columns if 'NO SQ' in str(c).upper()), None)
+
+            if not df_rfq.empty:
+                mask_rfq_int = df_rfq.apply(lambda r: is_internal_row(r, kat_rfq_c, cust_rfq_c), axis=1)
+                df_rfq_ext = df_rfq[~mask_rfq_int].copy()
+                if pilih_cust and kat_rfq_c:
+                    df_rfq_ext = df_rfq_ext[df_rfq_ext[kat_rfq_c].isin(pilih_cust)]
+            else:
+                df_rfq_ext = pd.DataFrame()
+
+            total_permintaan_rfq = len(df_rfq_ext)
+            sudah_sq_rfq = int(_has_value(df_rfq_ext[sq_rfq_c]).sum()) if (not df_rfq_ext.empty and sq_rfq_c) else 0
+
+            jadi_po_user = int(_has_value(df_komersial[po_cust_col]).sum()) if (not df_komersial.empty and po_cust_col) else len(df_komersial)
+            if status_col and not df_komersial.empty:
+                sudah_diterima_ext = int(
+                    (
+                        (df_komersial[status_col].astype(str).str.upper().str.strip() == 'SUDAH DITERIMA')
+                        | _has_value(df_komersial['TGL CUST TERIMA']) if 'TGL CUST TERIMA' in df_komersial.columns else False
+                        | _has_value(df_komersial['TGL GRN']) if 'TGL GRN' in df_komersial.columns else False
+                    ).sum()
+                )
+            else:
+                sudah_diterima_ext = 0
+
             total_revenue_exc = df_komersial['PRICE_CLEAN'].sum()
             total_revenue_inc = total_revenue_exc * 1.11
             total_hpp_exc = df_komersial['HPP_CLEAN'].sum()
-            
-            if po_cust_col and not df_komersial[po_cust_col].dropna().empty:
-                total_transaksi = df_komersial[po_cust_col].nunique()
-            else:
-                total_transaksi = len(df_komersial)
-                
-            total_item = df_komersial['QTY_CLEAN'].sum()
-            
-            if status_col:
-                if kat_col_order:
-                    outstanding_df = df_order_filtered[
-                        (~df_order_filtered[status_col].astype(str).str.upper().isin(['SUDAH DITERIMA', 'CANCEL'])) &
-                        (~df_order_filtered.apply(is_internal_hidden_row, axis=1))
-                    ]
-                else:
-                    outstanding_df = df_order_filtered[
-                        (~df_order_filtered[status_col].astype(str).str.upper().isin(['SUDAH DITERIMA', 'CANCEL']))
-                    ]
-            else:
-                outstanding_df = pd.DataFrame(columns=df_order_filtered.columns)
+            total_transaksi_unik = df_komersial[po_cust_col].nunique() if (po_cust_col and not df_komersial[po_cust_col].dropna().empty) else len(df_komersial)
 
-            balance_outstanding = outstanding_df['PRICE_CLEAN'].sum()
-            top_kategori = df_komersial[kat_col_order].mode()[0] if kat_col_order and not df_komersial[kat_col_order].empty else "Tidak Ada"
+            k1, k2, k3, k4 = st.columns(4)
+            k1.metric("Permintaan RFQ Eksternal", total_permintaan_rfq)
+            k2.metric("Sudah Terbit SQ (RFQ)", sudah_sq_rfq)
+            k3.metric("Jadi PO User (Order Aktif)", jadi_po_user)
+            k4.metric("Sudah Diterima (Order)", sudah_diterima_ext)
 
-            # Tampilan Metrik Utama (Komersial Bersih)
-            m1, m2, m3, m4 = st.columns(4)
-            m1.metric("Penjualan (Exclude PPN)", f"Rp {total_revenue_exc:,.0f}".replace(',', '.'))
-            m2.metric("Penjualan (Include PPN)", f"Rp {total_revenue_inc:,.0f}".replace(',', '.'))
-            m3.metric("HPP (Exclude PPN)", f"Rp {total_hpp_exc:,.0f}".replace(',', '.'))
-            m4.metric("Outstanding Balance", f"Rp {balance_outstanding:,.0f}".replace(',', '.'))
+            k5, k6, k7, k8 = st.columns(4)
+            k5.metric("Total Transaksi Unik (PO Cust)", total_transaksi_unik)
+            k6.metric("Penjualan (Exclude PPN)", f"Rp {total_revenue_exc:,.0f}".replace(',', '.'))
+            k7.metric("Penjualan (Include PPN)", f"Rp {total_revenue_inc:,.0f}".replace(',', '.'))
+            k8.metric("HPP (Exclude PPN)", f"Rp {total_hpp_exc:,.0f}".replace(',', '.'))
 
-            m5, m6, m7, m8 = st.columns(4)
-            m5.metric("Total Transaksi", total_transaksi)
-            m6.metric("Total Item QTY", f"{total_item:,.0f}")
-            m7.metric("Kategori Terbanyak", top_kategori)
-            
-            # --- SECTION TERPISAH: REKAPITULASI INTERNAL SIBIMA & AMIN ---
-            if not df_internal_hidden.empty:
-                def is_sibima_row(row):
-                    val = str(row[kat_col_order]).upper().strip() if kat_col_order else ""
-                    return ('SIBIMA BERKARYA MANDIRI' in val) or (val == 'GA SIBIMA') or ('PT. SIBIMA' in val and 'TECH' not in val)
-                
-                def is_amin_row(row):
-                    val = str(row[kat_col_order]).upper().strip() if kat_col_order else ""
-                    return ('AGRO MINA INTI NUSANTARA' in val) or (val in ['AMIN', 'GA AMIIN', 'GA AMIN']) or ('AGRO MINA' in val)
+            st.write("#### 📑 Tabel Detail Item / Transaksi Komersial Eksternal")
+            ext_priority_cols = [c for c in [
+                kat_col_order, cust_col_order, po_cust_col, 'TGL PO CUSTOMER',
+                sq_order_col, 'TGL SQ', 'NO SO', 'NO PO', 'ITEM', qty_col,
+                price_col, hpp_col, status_col, 'TGL ESTIMASI SAMPAI', 'TGL GRN', 'TGL DO', 'TGL CUST TERIMA'
+            ] if c and c in df_komersial.columns]
+            ext_rest_cols = [c for c in df_komersial.columns if c not in ext_priority_cols and not str(c).endswith('_CLEAN')]
+            df_komersial_view = df_komersial[ext_priority_cols + ext_rest_cols] if not df_komersial.empty else df_komersial
+            st.dataframe(format_date_columns(df_komersial_view), use_container_width=True, height=340)
 
-                df_sibima_hidden = df_internal_hidden[df_internal_hidden.apply(is_sibima_row, axis=1)]
-                df_amin_hidden = df_internal_hidden[df_internal_hidden.apply(is_amin_row, axis=1)]
-
-                # SIBIMA Section
-                if not df_sibima_hidden.empty:
-                    with st.expander("📁 Lihat Rekapitulasi Transaksi Internal - SIBIMA"):
-                        s_transaksi = df_sibima_hidden[po_cust_col].nunique() if (po_cust_col and not df_sibima_hidden[po_cust_col].dropna().empty) else len(df_sibima_hidden)
-                        s_hpp = df_sibima_hidden['HPP_CLEAN'].sum()
-                        if s_hpp == 0 and hpp_col:
-                            s_hpp = df_sibima_hidden[hpp_col].apply(clean_price).sum()
-                        s_item = df_sibima_hidden['QTY_CLEAN'].sum()
-
-                        sc1, sc2, sc3 = st.columns(3)
-                        sc1.metric("Total Transaksi SIBIMA", s_transaksi)
-                        sc2.metric("Total Belanja SIBIMA (HPP)", f"Rp {s_hpp:,.0f}".replace(',', '.'))
-                        sc3.metric("Total QTY SIBIMA", f"{s_item:,.0f}")
-                        
-                        st.dataframe(format_date_columns(df_sibima_hidden), use_container_width=True, height=250)
-
-                # AMIN Section
-                if not df_amin_hidden.empty:
-                    with st.expander("📁 Lihat Rekapitulasi Transaksi Internal - AMIN"):
-                        a_transaksi = df_amin_hidden[po_cust_col].nunique() if (po_cust_col and not df_amin_hidden[po_cust_col].dropna().empty) else len(df_amin_hidden)
-                        a_hpp = df_amin_hidden['HPP_CLEAN'].sum()
-                        if a_hpp == 0 and hpp_col:
-                            a_hpp = df_amin_hidden[hpp_col].apply(clean_price).sum()
-                        a_item = df_amin_hidden['QTY_CLEAN'].sum()
-
-                        ac1, ac2, ac3 = st.columns(3)
-                        ac1.metric("Total Transaksi AMIN", a_transaksi)
-                        ac2.metric("Total Belanja AMIN (HPP)", f"Rp {a_hpp:,.0f}".replace(',', '.'))
-                        ac3.metric("Total QTY AMIN", f"{a_item:,.0f}")
-                        
-                        st.dataframe(format_date_columns(df_amin_hidden), use_container_width=True, height=250)
-
+            # =========================================================
+            # BAGIAN 2: TRANSAKSI INTERNAL (SIBIMA & AMIN)
+            # Pantauan: Sudah diproses belum | Pembayaran diajukan belum | Sudah sampai belum
+            # =========================================================
             st.divider()
-            
-            # --- SECTION GRAFIK DONAT (DISUSUN KE BAWAH & AMAN DI BERBAGAI LAYAR) ---
-            st.write("#### 🍩 Proporsi Transaksi per Status")
-            if status_col:
-                status_counts = df_order_filtered[status_col].value_counts().reset_index()
-                status_counts.columns = ['Status', 'Jumlah']
-                donut_chart = alt.Chart(status_counts).mark_arc(innerRadius=60).encode(
-                    theta=alt.Theta(field="Jumlah", type="quantitative"), 
-                    color=alt.Color(field="Status", type="nominal", legend=alt.Legend(orient="right")), 
-                    tooltip=['Status', 'Jumlah']
-                ).properties(height=350, width="container")
-                st.altair_chart(donut_chart, use_container_width=True)
+            st.write("### 🏢 Ringkasan & Detail Transaksi Internal (SIBIMA & AMIN)")
+            st.caption("Pantauan khusus internal: sudah diproses belum, sudah diajukan pembayarannya belum (BPV), dan apakah sudah sampai.")
 
-            st.write("#### 🏢 Proporsi RFQ per Kategori Sales")
-            kat_rfq_col = next((c for c in df_rfq.columns if 'KATEGORI' in str(c).upper()), None)
-            if kat_rfq_col:
-                kat_counts = df_rfq[kat_rfq_col].value_counts().reset_index()
-                kat_counts.columns = ['Kategori', 'Jumlah RFQ']
-                donut_kat = alt.Chart(kat_counts).mark_arc(innerRadius=60).encode(
-                    theta=alt.Theta(field="Jumlah RFQ", type="quantitative"),
-                    color=alt.Color(field="Kategori", type="nominal", legend=alt.Legend(orient="right")),
-                    tooltip=['Kategori', 'Jumlah RFQ']
-                ).properties(height=350, width="container")
-                st.altair_chart(donut_kat, use_container_width=True)
+            if not df_internal_all.empty:
+                pr_col = next((c for c in df_internal_all.columns if 'NO PR' in str(c).upper()), None)
+                po_col = next((c for c in df_internal_all.columns if str(c).upper().strip() == 'NO PO' or 'NO PO' in str(c).upper() and 'CUSTOMER' not in str(c).upper()), None)
+                bpv_col = next((c for c in df_internal_all.columns if 'BPV' in str(c).upper()), None)
+                grn_col = next((c for c in df_internal_all.columns if 'GRN' in str(c).upper()), None)
+                do_col = next((c for c in df_internal_all.columns if str(c).upper().strip() == 'NO DO' or 'TGL DO' in str(c).upper()), None)
+                terima_col = next((c for c in df_internal_all.columns if 'CUST TERIMA' in str(c).upper() or 'TERIMA' in str(c).upper()), None)
+
+                has_pr = _has_value(df_internal_all[pr_col]) if pr_col else pd.Series(False, index=df_internal_all.index)
+                has_po = _has_value(df_internal_all[po_col]) if po_col else pd.Series(False, index=df_internal_all.index)
+                has_bpv = _has_value(df_internal_all[bpv_col]) if bpv_col else pd.Series(False, index=df_internal_all.index)
+                has_sampai = (
+                    (df_internal_all[status_col].astype(str).str.upper().str.strip() == 'SUDAH DITERIMA' if status_col else pd.Series(False, index=df_internal_all.index))
+                    | (_has_value(df_internal_all[terima_col]) if terima_col else pd.Series(False, index=df_internal_all.index))
+                    | (_has_value(df_internal_all[grn_col]) if grn_col else pd.Series(False, index=df_internal_all.index))
+                )
+                sudah_diproses = has_pr | has_po | has_bpv | has_sampai
+
+                ic1, ic2, ic3, ic4 = st.columns(4)
+                ic1.metric("Total Item Internal", len(df_internal_all))
+                ic2.metric("Sudah Diproses", int(sudah_diproses.sum()))
+                ic3.metric("Pembayaran Diajukan (BPV)", int(has_bpv.sum()))
+                ic4.metric("Sudah Sampai", int(has_sampai.sum()))
+
+                df_internal_disp = df_internal_all.copy()
+                df_internal_disp.insert(0, "Status Sampai", has_sampai.map({True: "Sudah Sampai", False: "Belum Sampai"}))
+                df_internal_disp.insert(0, "Pembayaran (BPV)", has_bpv.map({True: "Sudah Diajukan", False: "Belum Diajukan"}))
+                df_internal_disp.insert(0, "Status Proses", sudah_diproses.map({True: "Sudah Diproses", False: "Belum Diproses"}))
+
+                int_priority = [c for c in [
+                    "Status Proses", "Pembayaran (BPV)", "Status Sampai",
+                    kat_col_order, cust_col_order, 'ITEM', qty_col, status_col,
+                    pr_col, 'TGL PR', po_col, 'TGL PO', bpv_col, 'TGL BPV',
+                    'TGL ESTIMASI SAMPAI', grn_col, 'TGL GRN', do_col, terima_col
+                ] if c and c in df_internal_disp.columns]
+                int_rest = [c for c in df_internal_disp.columns if c not in int_priority and not str(c).endswith('_CLEAN')]
+
+                st.write("#### 📑 Tabel Detail Item / Transaksi Internal (SIBIMA & AMIN)")
+                st.dataframe(format_date_columns(df_internal_disp[int_priority + int_rest]), use_container_width=True, height=340)
+            else:
+                st.info("Tidak ada data transaksi internal (SIBIMA & AMIN) pada filter saat ini.")
 
     # --- TAB 2: MONITORING RFQ (PENDING & KENDALA) ---
     with tab_i2:
@@ -360,7 +363,7 @@ if mode == "🏢 Central Procurement & Interco":
         else:
             st.warning("Data Master RFQ kosong.")
 
-    # --- TAB 3: KONVERSI SQ KE PO (BERDASARKAN NO SQ DI MASTER RFQ -> MASTER ORDER) ---
+    # --- TAB 3: KONVERSI SQ KE PO ---
     with tab_i3:
         st.write("### 📈 Analisis Konversi SQ (Quotation) ke PO (Order)")
         st.markdown("Mengecek setiap **NO SQ** yang ada di `MASTER RFQ` apakah sudah masuk ke `MASTER ORDER`.")
@@ -393,7 +396,6 @@ if mode == "🏢 Central Procurement & Interco":
 
             st.divider()
 
-            # Tabel detail per NO SQ dari MASTER RFQ
             kat_rfq_c = next((c for c in df_rfq.columns if 'KATEGORI' in str(c).upper()), None)
             cust_rfq_c = next((c for c in df_rfq.columns if 'CUSTOMER' in str(c).upper()), None)
             stat_rfq_c = next((c for c in df_rfq.columns if 'STATUS' in str(c).upper()), None)
@@ -416,29 +418,8 @@ if mode == "🏢 Central Procurement & Interco":
                 })
 
             df_sq_track = pd.DataFrame(sq_rows)
-
-            filter_sq_status = st.selectbox(
-                "🔍 Filter Status SQ pada Master Order:",
-                ["Semua", "Masuk Order", "Belum Masuk Order"],
-                key="sq_track_filter"
-            )
-            if filter_sq_status != "Semua":
-                df_sq_track_view = df_sq_track[df_sq_track["Status Masuk Order"] == filter_sq_status]
-            else:
-                df_sq_track_view = df_sq_track
-
-            st.write("#### 📊 Ringkasan SQ (Master RFQ) Masuk vs Belum Masuk Order")
-            conv_summary = pd.DataFrame({
-                'Status': ['Masuk Order', 'Belum Masuk Order'],
-                'Jumlah NO SQ': [masuk_order_count, belum_masuk_count]
-            })
-            chart_conv = alt.Chart(conv_summary).mark_bar().encode(
-                x=alt.X('Status:N', sort=None, title='Status di Master Order'),
-                y=alt.Y('Jumlah NO SQ:Q', title='Jumlah NO SQ Unik'),
-                color=alt.Color('Status:N', scale=alt.Scale(domain=['Masuk Order', 'Belum Masuk Order'], range=['#2ca02c', '#d62728']), legend=None),
-                tooltip=['Status', 'Jumlah NO SQ']
-            ).properties(height=300)
-            st.altair_chart(chart_conv, use_container_width=True)
+            filter_sq_status = st.selectbox("🔍 Filter Status SQ pada Master Order:", ["Semua", "Masuk Order", "Belum Masuk Order"], key="sq_track_filter")
+            df_sq_track_view = df_sq_track[df_sq_track["Status Masuk Order"] == filter_sq_status] if filter_sq_status != "Semua" else df_sq_track
 
             st.write("#### 📑 Daftar Pelacakan NO SQ dari Master RFQ ke Master Order")
             st.dataframe(df_sq_track_view, use_container_width=True, height=380)
@@ -491,13 +472,12 @@ if mode == "🏢 Central Procurement & Interco":
             status_col = next((c for c in df_order.columns if 'STATUS' in str(c).upper()), None)
             if status_col:
                 df_interco_out = df_order[
-                    (~df_order[status_col].astype(str).str.upper().isin(['SUDAH DITERIMA', 'CANCEL']))
+                    (~df_order[status_col].astype(str).str.upper().str.strip().isin(['SUDAH DITERIMA', 'CANCEL']))
                 ].copy()
             else:
                 df_interco_out = df_order.copy()
 
             vend_col_in = next((c for c in df_interco_out.columns if 'VENDOR' in str(c).upper()), None)
-            
             list_v_in = ["Semua Vendor"] + sorted([str(x) for x in df_interco_out[vend_col_in].dropna().unique()]) if vend_col_in else ["Semua Vendor"]
             pilih_v_in = st.selectbox("🔍 Filter Berdasarkan Vendor Interco:", list_v_in)
 
