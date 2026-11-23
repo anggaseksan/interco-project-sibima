@@ -34,6 +34,28 @@ BULAN_ID = {
     9: "September", 10: "Oktober", 11: "November", 12: "Desember"
 }
 
+def make_unique_cols(cols):
+    seen = {}
+    out = []
+    for c in cols:
+        s = str(c).replace('\n', ' ').strip()
+        if not s:
+            s = "KOLOM"
+        if s in seen:
+            seen[s] += 1
+            out.append(f"{s} ({seen[s]})")
+        else:
+            seen[s] = 0
+            out.append(s)
+    return out
+
+def ensure_unique_cols(df):
+    if df is None or df.empty:
+        return df
+    out = df.copy()
+    out.columns = make_unique_cols(out.columns)
+    return out
+
 def _fmt_tgl_indo(val):
     if val is None or isinstance(val, (list, tuple, dict, set, np.ndarray, pd.Series, pd.Index)):
         return val
@@ -52,7 +74,7 @@ def _fmt_tgl_indo(val):
 def format_date_columns(df):
     if df is None or df.empty:
         return df
-    df_out = df.copy()
+    df_out = ensure_unique_cols(df)
     for col in df_out.columns:
         col_u = str(col).upper()
         if any(k in col_u for k in ['TGL', 'TANGGAL', 'DATE']):
@@ -87,7 +109,7 @@ def is_internal_row(row, kat_col=None, cust_col=None):
 def load_data(url, header_row=0):
     try:
         df = pd.read_csv(url, header=header_row)
-        df.columns = df.columns.str.replace('\n', ' ').str.strip()
+        df.columns = make_unique_cols(df.columns)
         return df
     except Exception:
         return pd.DataFrame()
@@ -238,13 +260,16 @@ if mode == "🏢 Central Procurement & Interco":
             k8.metric("HPP (Exclude PPN)", f"Rp {total_hpp_exc:,.0f}".replace(',', '.'))
 
             st.write("#### 📑 Tabel Detail Item / Transaksi Komersial Eksternal")
-            ext_priority_cols = [c for c in [
+            ext_priority_cols = []
+            for c in [
                 kat_col_order, cust_col_order, po_cust_col, 'TGL PO CUSTOMER',
                 sq_order_col, 'TGL SQ', 'NO SO', 'NO PO', 'ITEM', qty_col,
                 price_col, hpp_col, status_col, 'TGL ESTIMASI SAMPAI', 'TGL GRN', 'TGL DO', 'TGL CUST TERIMA'
-            ] if c and c in df_komersial.columns]
+            ]:
+                if c and c in df_komersial.columns and c not in ext_priority_cols:
+                    ext_priority_cols.append(c)
             ext_rest_cols = [c for c in df_komersial.columns if c not in ext_priority_cols and not str(c).endswith('_CLEAN')]
-            df_komersial_view = df_komersial[ext_priority_cols + ext_rest_cols] if not df_komersial.empty else df_komersial
+            df_komersial_view = ensure_unique_cols(df_komersial[ext_priority_cols + ext_rest_cols]) if not df_komersial.empty else df_komersial
             st.dataframe(format_date_columns(df_komersial_view), use_container_width=True, height=340)
 
             # =========================================================
@@ -283,16 +308,19 @@ if mode == "🏢 Central Procurement & Interco":
                 df_internal_disp.insert(0, "Pembayaran (BPV)", has_bpv.map({True: "Sudah Diajukan", False: "Belum Diajukan"}))
                 df_internal_disp.insert(0, "Status Proses", sudah_diproses.map({True: "Sudah Diproses", False: "Belum Diproses"}))
 
-                int_priority = [c for c in [
+                int_priority = []
+                for c in [
                     "Status Proses", "Pembayaran (BPV)", "Status Sampai",
                     kat_col_order, cust_col_order, 'ITEM', qty_col, status_col,
                     pr_col, 'TGL PR', po_col, 'TGL PO', bpv_col, 'TGL BPV',
                     'TGL ESTIMASI SAMPAI', grn_col, 'TGL GRN', do_col, terima_col
-                ] if c and c in df_internal_disp.columns]
+                ]:
+                    if c and c in df_internal_disp.columns and c not in int_priority:
+                        int_priority.append(c)
                 int_rest = [c for c in df_internal_disp.columns if c not in int_priority and not str(c).endswith('_CLEAN')]
 
                 st.write("#### 📑 Tabel Detail Item / Transaksi Internal (SIBIMA & AMIN)")
-                st.dataframe(format_date_columns(df_internal_disp[int_priority + int_rest]), use_container_width=True, height=340)
+                st.dataframe(format_date_columns(ensure_unique_cols(df_internal_disp[int_priority + int_rest])), use_container_width=True, height=340)
             else:
                 st.info("Tidak ada data transaksi internal (SIBIMA & AMIN) pada filter saat ini.")
 
