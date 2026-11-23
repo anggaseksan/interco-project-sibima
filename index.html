@@ -1,0 +1,1478 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SIBIMA Purchasing & Procurement Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #f4f7fb;
+      color: #1e293b;
+    }
+    .table-wrap::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    .table-wrap::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    .table-wrap::-webkit-scrollbar-track {
+      background: #f8fafc;
+    }
+    .kpi-card {
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .kpi-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+    }
+  </style>
+</head>
+<body class="min-h-screen overflow-x-hidden">
+
+  <div class="max-w-[1440px] mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-5">
+
+    <!-- TOP BANNER -->
+    <header class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-2xs flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+      <div class="space-y-1">
+        <div class="flex flex-wrap items-center gap-2.5">
+          <span class="w-9 h-9 rounded-xl bg-blue-600 text-white font-extrabold text-sm flex items-center justify-center shadow-xs">
+            SB
+          </span>
+          <h1 class="text-lg sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+            SIBIMA Purchasing & Procurement Dashboard
+          </h1>
+          <span id="dataSourceBadge" class="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+            Live Google Sheets
+          </span>
+        </div>
+        <p class="text-xs sm:text-sm text-slate-500">
+          Div. Procurement & Interco • Sinkronisasi <span class="font-medium text-slate-700">MASTER RFQ</span> & <span class="font-medium text-slate-700">MASTER ORDER</span>
+        </p>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2.5 sm:gap-3">
+        <div class="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-left lg:text-right">
+          <div class="text-xs font-semibold text-slate-700 flex items-center lg:justify-end gap-1.5">
+            <span id="syncDot" class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            Sinkron: <span id="syncTimestamp">Memuat...</span>
+          </div>
+          <div id="syncCounts" class="text-[11px] text-slate-400 mt-0.5">0 baris RFQ • 0 baris Order</div>
+        </div>
+
+        <button id="btnRefresh" type="button" class="px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 active:scale-[0.99] transition flex items-center gap-1.5 shadow-2xs">
+          <svg id="refreshIcon" class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          Refresh Data
+        </button>
+      </div>
+    </header>
+
+    <!-- STATUS / INFO BANNER -->
+    <div id="statusBox" class="hidden rounded-xl px-4 py-3 text-xs sm:text-sm font-medium border flex items-center justify-between gap-3">
+      <span id="statusBoxText"></span>
+      <button id="btnCloseStatus" type="button" class="font-bold px-1.5 py-0.5 rounded hover:bg-black/5">✕</button>
+    </div>
+
+    <!-- HORIZONTAL FILTER BAR -->
+    <section class="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div>
+          <label for="filterStatusOrder" class="block text-xs font-semibold text-slate-600 mb-1">Status Order</label>
+          <select id="filterStatusOrder" class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="ALL">Semua Status</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="filterKategori" class="block text-xs font-semibold text-slate-600 mb-1">Kategori / Customer</label>
+          <select id="filterKategori" class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="ALL">Semua Kategori</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="filterVendor" class="block text-xs font-semibold text-slate-600 mb-1">Supplier / Vendor</label>
+          <select id="filterVendor" class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="ALL">Semua Vendor</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="filterKeyword" class="block text-xs font-semibold text-slate-600 mb-1">Pencarian Kata Kunci</label>
+          <input id="filterKeyword" type="text" placeholder="Cari SQ, PO, PR, BPV, Item..." class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+
+        <div class="flex items-end">
+          <button id="btnResetFilters" type="button" class="w-full rounded-xl border border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs sm:text-sm px-3 py-2 transition">
+            Reset Filter
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- MULTI-TAB NAVIGATION -->
+    <nav class="bg-white border border-slate-200 rounded-2xl p-1.5 shadow-2xs flex items-center gap-1.5 overflow-x-auto" aria-label="Tab Dashboard">
+      <button data-tab="overview" class="tab-btn whitespace-nowrap px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition bg-blue-600 text-white">
+        📊 Overview & Detail Transaksi
+      </button>
+      <button data-tab="rfq" class="tab-btn whitespace-nowrap px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition text-slate-600 hover:bg-slate-100">
+        🔍 Monitoring RFQ (Pending & Kendala)
+      </button>
+      <button data-tab="sq" class="tab-btn whitespace-nowrap px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition text-slate-600 hover:bg-slate-100">
+        📈 Konversi SQ ke PO
+      </button>
+      <button data-tab="vendor" class="tab-btn whitespace-nowrap px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition text-slate-600 hover:bg-slate-100">
+        📋 Analisis Vendor
+      </button>
+      <button data-tab="outstanding" class="tab-btn whitespace-nowrap px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition text-slate-600 hover:bg-slate-100">
+        🚚 Outstanding Supply Vendor
+      </button>
+    </nav>
+
+    <!-- ========================================================= -->
+    <!-- TAB 1: OVERVIEW & DETAIL TRANSAKSI                        -->
+    <!-- ========================================================= -->
+    <section id="tab-overview" class="tab-panel space-y-6">
+
+      <!-- Jalur Komersial Eksternal -->
+      <div class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-2xs space-y-5">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-100 pb-3.5">
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+              Jalur Komersial Eksternal (Termasuk SIBIMATECH)
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">
+              Metrik order komersial mengecualikan status CANCEL dan PENDING; mencakup seluruh alur eksternal termasuk SIBIMATECH.
+            </p>
+          </div>
+          <span class="px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 w-fit">
+            Komersial Eksternal
+          </span>
+        </div>
+
+        <!-- Row 1: 4 Pipeline Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
+          <div class="kpi-card bg-slate-50/80 border border-slate-200 rounded-xl p-4">
+            <div class="flex items-center justify-between text-xs font-semibold text-slate-500 mb-2">
+              <span>Permintaan RFQ Eksternal</span>
+              <span class="px-2 py-0.5 rounded-md bg-blue-100 text-blue-700">RFQ</span>
+            </div>
+            <div id="kpiRfqExt" class="text-2xl font-extrabold text-slate-900">0</div>
+            <div class="text-[11px] text-slate-400 mt-1">Baris RFQ jalur eksternal</div>
+          </div>
+
+          <div class="kpi-card bg-slate-50/80 border border-slate-200 rounded-xl p-4">
+            <div class="flex items-center justify-between text-xs font-semibold text-slate-500 mb-2">
+              <span>Sudah Terbit SQ</span>
+              <span class="px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-700">SQ</span>
+            </div>
+            <div id="kpiTerbitSq" class="text-2xl font-extrabold text-indigo-700">0</div>
+            <div class="text-[11px] text-slate-400 mt-1">RFQ eksternal ber-nomor SQ</div>
+          </div>
+
+          <div class="kpi-card bg-slate-50/80 border border-slate-200 rounded-xl p-4">
+            <div class="flex items-center justify-between text-xs font-semibold text-slate-500 mb-2">
+              <span>Jadi PO User / Order</span>
+              <span class="px-2 py-0.5 rounded-md bg-cyan-100 text-cyan-800">PO</span>
+            </div>
+            <div id="kpiJadiPoUser" class="text-2xl font-extrabold text-cyan-800">0</div>
+            <div id="subJadiPoUser" class="text-[11px] text-slate-400 mt-1">0 PO Customer unik</div>
+          </div>
+
+          <div class="kpi-card bg-slate-50/80 border border-slate-200 rounded-xl p-4">
+            <div class="flex items-center justify-between text-xs font-semibold text-slate-500 mb-2">
+              <span>Sudah Diterima</span>
+              <span class="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-700">DONE</span>
+            </div>
+            <div id="kpiSudahTerimaExt" class="text-2xl font-extrabold text-emerald-700">0</div>
+            <div class="text-[11px] text-slate-400 mt-1">Status Sudah Diterima / Tgl GRN & Terima</div>
+          </div>
+        </div>
+
+        <!-- Row 2: 4 Financial Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
+          <div class="kpi-card bg-white border border-slate-200 rounded-xl p-4">
+            <div class="text-xs font-semibold text-slate-500 mb-1.5">Total Pembelian (HPP)</div>
+            <div id="kpiTotalHpp" class="text-lg sm:text-xl font-extrabold text-slate-900">Rp 0</div>
+            <div class="text-[11px] text-slate-400 mt-1">Akumulasi harga beli komersial</div>
+          </div>
+
+          <div class="kpi-card bg-white border border-slate-200 rounded-xl p-4">
+            <div class="text-xs font-semibold text-slate-500 mb-1.5">Penjualan (Exclude PPN)</div>
+            <div id="kpiJualExc" class="text-lg sm:text-xl font-extrabold text-blue-700">Rp 0</div>
+            <div class="text-[11px] text-slate-400 mt-1">Total harga jual sebelum PPN</div>
+          </div>
+
+          <div class="kpi-card bg-white border border-slate-200 rounded-xl p-4">
+            <div class="text-xs font-semibold text-slate-500 mb-1.5">Penjualan (Include PPN)</div>
+            <div id="kpiJualInc" class="text-lg sm:text-xl font-extrabold text-emerald-700">Rp 0</div>
+            <div class="text-[11px] text-slate-400 mt-1">Termasuk PPN 11% (× 1,11)</div>
+          </div>
+
+          <div class="kpi-card bg-white border border-slate-200 rounded-xl p-4">
+            <div class="text-xs font-semibold text-slate-500 mb-1.5">Estimasi Margin</div>
+            <div id="kpiMargin" class="text-lg sm:text-xl font-extrabold text-violet-700">Rp 0</div>
+            <div id="subMarginPct" class="text-[11px] text-slate-400 mt-1">0,0% dari penjualan excl. PPN</div>
+          </div>
+        </div>
+
+        <!-- Commercial Detail Table -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-bold text-slate-800">Tabel Detail Transaksi Komersial Eksternal</h3>
+            <span id="countKomersialRows" class="text-xs text-slate-500 font-medium">0 baris</span>
+          </div>
+          <div class="table-wrap overflow-x-auto border border-slate-200 rounded-xl max-h-[380px]">
+            <table class="min-w-full text-left text-xs border-collapse">
+              <thead id="theadKomersial" class="bg-slate-100 text-slate-700 font-semibold sticky top-0 z-10"></thead>
+              <tbody id="tbodyKomersial" class="divide-y divide-slate-100 bg-white text-slate-700"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Jalur Operasional Internal -->
+      <div class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-2xs space-y-5">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-100 pb-3.5">
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+              Jalur Operasional Internal (SIBIMA & AMIN)
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">
+              Khusus SIBIMA & AMIN (di luar SIBIMATECH): memantau item Sudah Diproses, Pembayaran Diajukan (BPV), dan Sudah Sampai.
+            </p>
+          </div>
+          <span class="px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 w-fit">
+            Operasional Internal
+          </span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
+          <div class="kpi-card bg-slate-50/80 border border-slate-200 rounded-xl p-4">
+            <div class="text-xs font-semibold text-slate-500 mb-1.5">Total Item Internal</div>
+            <div id="kpiIntTotal" class="text-2xl font-extrabold text-slate-900">0</div>
+            <div class="text-[11px] text-slate-400 mt-1">SIBIMA & AMIN terfilter</div>
+          </div>
+
+          <div class="kpi-card bg-slate-50/80 border border-slate-200 rounded-xl p-4">
+            <div class="text-xs font-semibold text-slate-500 mb-1.5">Sudah Diproses</div>
+            <div id="kpiIntDiproses" class="text-2xl font-extrabold text-blue-700">0</div>
+            <div id="subIntDiproses" class="text-[11px] text-slate-400 mt-1">Belum diproses: 0 item</div>
+          </div>
+
+          <div class="kpi-card bg-slate-50/80 border border-slate-200 rounded-xl p-4">
+            <div class="text-xs font-semibold text-slate-500 mb-1.5">Pembayaran Diajukan (BPV)</div>
+            <div id="kpiIntBpv" class="text-2xl font-extrabold text-amber-700">0</div>
+            <div id="subIntBpv" class="text-[11px] text-slate-400 mt-1">Belum BPV: 0 item</div>
+          </div>
+
+          <div class="kpi-card bg-slate-50/80 border border-slate-200 rounded-xl p-4">
+            <div class="text-xs font-semibold text-slate-500 mb-1.5">Sudah Sampai</div>
+            <div id="kpiIntSampai" class="text-2xl font-extrabold text-emerald-700">0</div>
+            <div id="subIntSampai" class="text-[11px] text-slate-400 mt-1">Belum sampai: 0 item</div>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-bold text-slate-800">Tabel Detail Transaksi Internal (SIBIMA & AMIN)</h3>
+            <span id="countInternalRows" class="text-xs text-slate-500 font-medium">0 baris</span>
+          </div>
+          <div class="table-wrap overflow-x-auto border border-slate-200 rounded-xl max-h-[380px]">
+            <table class="min-w-full text-left text-xs border-collapse">
+              <thead id="theadInternal" class="bg-slate-100 text-slate-700 font-semibold sticky top-0 z-10"></thead>
+              <tbody id="tbodyInternal" class="divide-y divide-slate-100 bg-white text-slate-700"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ========================================================= -->
+    <!-- TAB 2: MONITORING RFQ (PENDING & KENDALA)                 -->
+    <!-- ========================================================= -->
+    <section id="tab-rfq" class="tab-panel hidden space-y-6">
+      <div class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-2xs space-y-5">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border-b border-slate-100 pb-3.5">
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-slate-900">Monitoring RFQ: Pending & Kendala</h2>
+            <p class="text-xs text-slate-500 mt-0.5">
+              Memisahkan antrean RFQ aktif/pending dari item PENDING berkendala HOLD untuk follow-up hingga CLOSE.
+            </p>
+          </div>
+          <button id="btnExportRfq" type="button" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition w-fit">
+            📥 Export CSV RFQ Aktif
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="kpi-card bg-slate-50/80 border border-slate-200 rounded-xl p-4">
+            <div class="text-xs font-semibold text-slate-500 mb-1">Total RFQ Masuk</div>
+            <div id="kpiRfqAll" class="text-2xl font-extrabold text-slate-900">0</div>
+            <div class="text-[11px] text-slate-400 mt-1">Sesuai filter aktif</div>
+          </div>
+
+          <div class="kpi-card bg-slate-50/80 border border-slate-200 rounded-xl p-4">
+            <div class="text-xs font-semibold text-slate-500 mb-1">RFQ Aktif / Belum Selesai</div>
+            <div id="kpiRfqPendingActive" class="text-2xl font-extrabold text-rose-600">0</div>
+            <div class="text-[11px] text-slate-400 mt-1">Di luar COMPLETE / CANCEL / HOLD</div>
+          </div>
+
+          <div class="kpi-card bg-slate-50/80 border border-slate-200 rounded-xl p-4">
+            <div class="text-xs font-semibold text-slate-500 mb-1">RFQ PENDING + HOLD (Follow-up)</div>
+            <div id="kpiRfqHoldFollowup" class="text-2xl font-extrabold text-amber-600">0</div>
+            <div class="text-[11px] text-slate-400 mt-1">Dipantau sampai berstatus CLOSE</div>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <h3 class="text-sm font-bold text-slate-800">Daftar RFQ Aktif / Pending & Kendala</h3>
+          <div class="table-wrap overflow-x-auto border border-slate-200 rounded-xl max-h-[360px]">
+            <table class="min-w-full text-left text-xs border-collapse">
+              <thead id="theadRfqActive" class="bg-slate-100 text-slate-700 font-semibold sticky top-0 z-10"></thead>
+              <tbody id="tbodyRfqActive" class="divide-y divide-slate-100 bg-white text-slate-700"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="space-y-2 pt-1">
+          <h3 class="text-sm font-bold text-amber-800">Daftar RFQ PENDING + HOLD (Follow-up Sampai CLOSE)</h3>
+          <div class="table-wrap overflow-x-auto border border-amber-200 rounded-xl max-h-[300px]">
+            <table class="min-w-full text-left text-xs border-collapse">
+              <thead id="theadRfqHold" class="bg-amber-50 text-amber-900 font-semibold sticky top-0 z-10"></thead>
+              <tbody id="tbodyRfqHold" class="divide-y divide-amber-100 bg-white text-slate-700"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================= -->
+    <!-- TAB 3: KONVERSI SQ KE PO                                  -->
+    <!-- ========================================================= -->
+    <section id="tab-sq" class="tab-panel hidden space-y-6">
+      <div class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-2xs space-y-5">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border-b border-slate-100 pb-3.5">
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-slate-900">Konversi NO SQ (MASTER RFQ → MASTER ORDER)</h2>
+            <p class="text-xs text-slate-500 mt-0.5">
+              Pencocokan nomor SQ unik dari MASTER RFQ terhadap nomor SQ yang tercatat pada MASTER ORDER.
+            </p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <select id="filterSqStatus" class="rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700">
+              <option value="ALL">Semua Status SQ</option>
+              <option value="MASUK">Masuk Master Order</option>
+              <option value="BELUM">Belum Masuk Order</option>
+            </select>
+            <button id="btnExportSq" type="button" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition">
+              📥 Export CSV SQ
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div class="kpi-card bg-slate-50/80 border border-slate-200 rounded-xl p-4">
+            <div class="text-xs font-semibold text-slate-500 mb-1">Total NO SQ Unik</div>
+            <div id="kpiSqUnique" class="text-2xl font-extrabold text-slate-900">0</div>
+            <div class="text-[11px] text-slate-400 mt-1">Nomor SQ unik di MASTER RFQ</div>
+          </div>
+
+          <div class="kpi-card bg-slate-50/80 border border-slate-200 rounded-xl p-4">
+            <div class="text-xs font-semibold text-slate-500 mb-1">Masuk Master Order</div>
+            <div id="kpiSqMasuk" class="text-2xl font-extrabold text-emerald-700">0</div>
+            <div class="text-[11px] text-slate-400 mt-1">Tercatat juga di MASTER ORDER</div>
+          </div>
+
+          <div class="kpi-card bg-slate-50/80 border border-slate-200 rounded-xl p-4">
+            <div class="text-xs font-semibold text-slate-500 mb-1">Belum Masuk Order</div>
+            <div id="kpiSqBelum" class="text-2xl font-extrabold text-rose-600">0</div>
+            <div class="text-[11px] text-slate-400 mt-1">Belum muncul di MASTER ORDER</div>
+          </div>
+
+          <div class="kpi-card bg-slate-50/80 border border-slate-200 rounded-xl p-4">
+            <div class="text-xs font-semibold text-slate-500 mb-1">Conversion Rate SQ</div>
+            <div id="kpiSqConvRate" class="text-2xl font-extrabold text-blue-700">0,00%</div>
+            <div class="text-[11px] text-slate-400 mt-1">Masuk Order ÷ Total NO SQ Unik</div>
+          </div>
+        </div>
+
+        <div class="table-wrap overflow-x-auto border border-slate-200 rounded-xl max-h-[420px]">
+          <table class="min-w-full text-left text-xs border-collapse">
+            <thead class="bg-slate-100 text-slate-700 font-semibold sticky top-0 z-10">
+              <tr>
+                <th class="px-3.5 py-2.5 border-b">NO SQ</th>
+                <th class="px-3.5 py-2.5 border-b">Status Masuk Order</th>
+                <th class="px-3.5 py-2.5 border-b">Jumlah Item RFQ</th>
+                <th class="px-3.5 py-2.5 border-b">Kategori</th>
+                <th class="px-3.5 py-2.5 border-b">Customer</th>
+                <th class="px-3.5 py-2.5 border-b">Status RFQ</th>
+              </tr>
+            </thead>
+            <tbody id="tbodySqConversion" class="divide-y divide-slate-100 bg-white text-slate-700"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================= -->
+    <!-- TAB 4: ANALISIS VENDOR                                    -->
+    <!-- ========================================================= -->
+    <section id="tab-vendor" class="tab-panel hidden space-y-6">
+      <div class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-2xs space-y-5">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-100 pb-3.5">
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-slate-900">Analisis Performa & Volume Vendor</h2>
+            <p class="text-xs text-slate-500 mt-0.5">
+              Ringkasan jumlah item order, outstanding, dan total nilai beli per vendor berdasarkan filter aktif.
+            </p>
+          </div>
+          <span id="kpiVendorCountBadge" class="px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 w-fit">
+            0 Vendor Aktif
+          </span>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Interactive Bar Chart (Top 15 Vendors) -->
+          <div class="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
+            <h3 class="text-sm font-bold text-slate-800 mb-3">Grafik Top 15 Vendor Berdasarkan Jumlah Item</h3>
+            <div id="vendorBarChart" class="space-y-2.5"></div>
+          </div>
+
+          <!-- Vendor Summary Table -->
+          <div class="table-wrap overflow-x-auto border border-slate-200 rounded-xl max-h-[460px]">
+            <table class="min-w-full text-left text-xs border-collapse">
+              <thead class="bg-slate-100 text-slate-700 font-semibold sticky top-0 z-10">
+                <tr>
+                  <th class="px-3.5 py-2.5 border-b">Vendor</th>
+                  <th class="px-3.5 py-2.5 border-b">Jumlah Item</th>
+                  <th class="px-3.5 py-2.5 border-b">Outstanding</th>
+                  <th class="px-3.5 py-2.5 border-b">Total Pembelian</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyVendorAnalytics" class="divide-y divide-slate-100 bg-white text-slate-700"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================= -->
+    <!-- TAB 5: OUTSTANDING SUPPLY VENDOR                          -->
+    <!-- ========================================================= -->
+    <section id="tab-outstanding" class="tab-panel hidden space-y-6">
+      <div class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-2xs space-y-5">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border-b border-slate-100 pb-3.5">
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-slate-900">Outstanding Supply Vendor</h2>
+            <p class="text-xs text-slate-500 mt-0.5">
+              Daftar item order yang belum berstatus SUDAH DITERIMA dan bukan CANCEL.
+            </p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <select id="filterOutstandingVendor" class="rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700">
+              <option value="ALL">Semua Vendor Outstanding</option>
+            </select>
+            <button id="btnExportOutstanding" type="button" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition">
+              📥 Export CSV Outstanding
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="kpi-card bg-slate-50/80 border border-slate-200 rounded-xl p-4">
+            <div class="text-xs font-semibold text-slate-500 mb-1">Total Item Outstanding</div>
+            <div id="kpiOutCount" class="text-2xl font-extrabold text-amber-700">0</div>
+            <div class="text-[11px] text-slate-400 mt-1">Belum diterima & non-cancel</div>
+          </div>
+
+          <div class="kpi-card bg-slate-50/80 border border-slate-200 rounded-xl p-4">
+            <div class="text-xs font-semibold text-slate-500 mb-1">Total Qty Outstanding</div>
+            <div id="kpiOutQty" class="text-2xl font-extrabold text-slate-900">0</div>
+            <div class="text-[11px] text-slate-400 mt-1">Akumulasi kuantitas unit</div>
+          </div>
+
+          <div class="kpi-card bg-slate-50/80 border border-slate-200 rounded-xl p-4">
+            <div class="text-xs font-semibold text-slate-500 mb-1">Nilai Pembelian Outstanding</div>
+            <div id="kpiOutValue" class="text-xl font-extrabold text-blue-700">Rp 0</div>
+            <div class="text-[11px] text-slate-400 mt-1">Estimasi nilai supply berjalan</div>
+          </div>
+        </div>
+
+        <div class="table-wrap overflow-x-auto border border-slate-200 rounded-xl max-h-[420px]">
+          <table class="min-w-full text-left text-xs border-collapse">
+            <thead id="theadOutstanding" class="bg-slate-100 text-slate-700 font-semibold sticky top-0 z-10"></thead>
+            <tbody id="tbodyOutstanding" class="divide-y divide-slate-100 bg-white text-slate-700"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    // =========================================================================
+    // KONFIGURASI GOOGLE SHEETS LIVE URLs & SAMPLE FALLBACK
+    // =========================================================================
+    const SHEET_URLS = {
+      rfq: "https://docs.google.com/spreadsheets/d/18isSUeBYGiM2xuhV8QsXP57_AOotJ07vu1dvd5i62GI/export?format=csv&gid=1100229590",
+      order: "https://docs.google.com/spreadsheets/d/18isSUeBYGiM2xuhV8QsXP57_AOotJ07vu1dvd5i62GI/export?format=csv&gid=467075902"
+    };
+
+    const SAMPLE_RFQ_ROWS = [
+      { "TGL RFQ": "2026-11-03", "KATEGORI": "ASRI", "CUSTOMER": "PT. ASRI KARYA LESTARI", "ITEM": "UPS Rackmount 3000VA", "QTY": 2, "STATUS": "COMPLETE", "KENDALA": "", "NO SQ": "SIBSQ26110001" },
+      { "TGL RFQ": "2026-11-05", "KATEGORI": "SIBIMATECH", "CUSTOMER": "PT. SIBIMA TEKNOLOGI NUSANTARA", "ITEM": "Server Blade Node Gen11", "QTY": 1, "STATUS": "COMPLETE", "KENDALA": "", "NO SQ": "SIBSQ26110002" },
+      { "TGL RFQ": "2026-11-09", "KATEGORI": "OLR", "CUSTOMER": "PT. OCEAN LINK RESOURCES", "ITEM": "Switch Managed 48-Port SFP+", "QTY": 3, "STATUS": "PENDING", "KENDALA": "Menunggu penawaran resmi distributor", "NO SQ": "SIBSQ26110003" },
+      { "TGL RFQ": "2026-11-11", "KATEGORI": "ASRI", "CUSTOMER": "PT. ASRI KARYA LESTARI", "ITEM": "CCTV Bullet 4MP IP PoE", "QTY": 12, "STATUS": "PENDING", "KENDALA": "HOLD", "NO SQ": "SIBSQ26110004" },
+      { "TGL RFQ": "2026-11-14", "KATEGORI": "SIBIMA", "CUSTOMER": "PT. SIBIMA KARYA MANDIRI", "ITEM": "Toner Printer LaserJet Hitam", "QTY": 6, "STATUS": "COMPLETE", "KENDALA": "", "NO SQ": "" },
+      { "TGL RFQ": "2026-11-16", "KATEGORI": "AMIN", "CUSTOMER": "PT. AGRO MINA INTI NUSANTARA", "ITEM": "Pompa Air Celup 2 HP", "QTY": 2, "STATUS": "PENDING", "KENDALA": "Konfirmasi spesifikasi tegangan user", "NO SQ": "" },
+      { "TGL RFQ": "2026-11-18", "KATEGORI": "WKM", "CUSTOMER": "PT. WAHANA KARYA MANDIRI", "ITEM": "Safety Helmet Dual Layer", "QTY": 25, "STATUS": "CANCEL", "KENDALA": "Dibatalkan user", "NO SQ": "" },
+      { "TGL RFQ": "2026-11-20", "KATEGORI": "SIBIMATECH", "CUSTOMER": "PT. SIBIMA TEKNOLOGI NUSANTARA", "ITEM": "Access Point WiFi 7 Indoor", "QTY": 8, "STATUS": "PENDING", "KENDALA": "Lead time pengiriman 3 minggu", "NO SQ": "SIBSQ26110005" }
+    ];
+
+    const SAMPLE_ORDER_ROWS = [
+      {
+        "KATEGORI": "ASRI", "CUSTOMER": "PT. ASRI KARYA LESTARI", "NO PO CUSTOMER": "PO-ASRI-2611-01",
+        "TGL PO CUSTOMER": "2026-11-04", "NO SQ": "SIBSQ26110001", "NO SO": "SO-2611-001", "NO PO": "SIBPO2611001",
+        "TGL PO": "2026-11-05", "ITEM": "UPS Rackmount 3000VA", "QTY": 2, "VENDOR": "PT DAYA SENTOSA UTAMA",
+        "TOTAL HARGA JUAL": 48500000, "TOTAL HARGA BELI": 39200000, "STATUS": "SUDAH DITERIMA",
+        "TGL ESTIMASI SAMPAI": "2026-11-10", "TGL GRN": "2026-11-09", "TGL DO": "2026-11-09", "TGL CUST TERIMA": "2026-11-10"
+      },
+      {
+        "KATEGORI": "SIBIMATECH", "CUSTOMER": "PT. SIBIMA TEKNOLOGI NUSANTARA", "NO PO CUSTOMER": "PO-SBTECH-2611-04",
+        "TGL PO CUSTOMER": "2026-11-06", "NO SQ": "SIBSQ26110002", "NO SO": "SO-2611-002", "NO PO": "SIBPO2611002",
+        "TGL PO": "2026-11-07", "ITEM": "Server Blade Node Gen11", "QTY": 1, "VENDOR": "PT SOLUSI SERVER INDONESIA",
+        "TOTAL HARGA JUAL": 135000000, "TOTAL HARGA BELI": 111000000, "STATUS": "SUDAH DITERIMA",
+        "TGL ESTIMASI SAMPAI": "2026-11-14", "TGL GRN": "2026-11-13", "TGL DO": "2026-11-13", "TGL CUST TERIMA": "2026-11-14"
+      },
+      {
+        "KATEGORI": "OLR", "CUSTOMER": "PT. OCEAN LINK RESOURCES", "NO PO CUSTOMER": "PO-OLR-2611-09",
+        "TGL PO CUSTOMER": "2026-11-12", "NO SQ": "SIBSQ26110003", "NO SO": "SO-2611-003", "NO PO": "SIBPO2611003",
+        "TGL PO": "2026-11-13", "ITEM": "Switch Managed 48-Port SFP+", "QTY": 3, "VENDOR": "PT MITRA JARINGAN PRIMA",
+        "TOTAL HARGA JUAL": 69000000, "TOTAL HARGA BELI": 55500000, "STATUS": "DALAM PENGIRIMAN",
+        "TGL ESTIMASI SAMPAI": "2026-11-26", "TGL GRN": "", "TGL DO": "2026-11-21", "TGL CUST TERIMA": ""
+      },
+      {
+        "KATEGORI": "SIBIMA", "CUSTOMER": "PT. SIBIMA KARYA MANDIRI", "NO PO CUSTOMER": "",
+        "TGL PO CUSTOMER": "", "NO SQ": "", "NO SO": "", "NO PR": "SIBPR2611001",
+        "TGL PR": "2026-11-14", "NO PO": "SIBPO2611004", "TGL PO": "2026-11-15",
+        "NO BPV": "BPV-2611-002", "TGL BPV": "2026-11-17", "ITEM": "Toner Printer LaserJet Hitam",
+        "QTY": 6, "VENDOR": "CV MITRA NIAGA ABADI", "TOTAL HARGA JUAL": 0, "TOTAL HARGA BELI": 5400000,
+        "STATUS": "SUDAH DITERIMA", "TGL ESTIMASI SAMPAI": "2026-11-19", "TGL GRN": "2026-11-19", "TGL DO": "", "TGL CUST TERIMA": ""
+      },
+      {
+        "KATEGORI": "AMIN", "CUSTOMER": "PT. AGRO MINA INTI NUSANTARA", "NO PO CUSTOMER": "",
+        "TGL PO CUSTOMER": "", "NO SQ": "", "NO SO": "", "NO PR": "SIBPR2611005",
+        "TGL PR": "2026-11-17", "NO PO": "SIBPO2611005", "TGL PO": "2026-11-18",
+        "NO BPV": "", "TGL BPV": "", "ITEM": "Pompa Air Celup 2 HP",
+        "QTY": 2, "VENDOR": "PT TEKNIK AGRO MANDIRI", "TOTAL HARGA JUAL": 0, "TOTAL HARGA BELI": 7800000,
+        "STATUS": "PROSES VENDOR", "TGL ESTIMASI SAMPAI": "2026-11-27", "TGL GRN": "", "TGL DO": "", "TGL CUST TERIMA": ""
+      }
+    ];
+
+    // =========================================================================
+    // STATE APLIKASI
+    // =========================================================================
+    let state = {
+      rfqRows: [],
+      orderRows: [],
+      isLive: false,
+      activeTab: "overview",
+      lastDatasets: {
+        komersial: [],
+        internal: [],
+        rfqActive: [],
+        rfqHold: [],
+        sqList: [],
+        outstanding: []
+      }
+    };
+
+    const BULAN_ID = [
+      "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+      "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+    ];
+
+    // =========================================================================
+    // FORMATTER INDONESIA (RUPIAH & TANGGAL)
+    // =========================================================================
+    function formatRupiah(num) {
+      const val = Number(num) || 0;
+      return "Rp " + Math.round(val).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    }
+
+    function formatNumber(num) {
+      const val = Number(num) || 0;
+      return Math.round(val).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    }
+
+    function formatTanggalIndo(val) {
+      if (val === null || val === undefined) return "";
+      const raw = String(val).trim();
+      if (!raw || raw === "-" || raw.toUpperCase() === "NAN" || raw.toUpperCase() === "NAT") return "";
+
+      // Jika sudah berbentuk "9 Juli 2026"
+      if (BULAN_ID.some(b => raw.includes(b))) return raw;
+
+      // Tangani format YYYY-MM-DD atau DD/MM/YYYY atau timestamp
+      let dt = null;
+      const isoMatch = raw.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+      if (isoMatch) {
+        dt = new Date(Number(isoMatch[1]), Number(isoMatch[2]) - 1, Number(isoMatch[3]));
+      } else {
+        const dmyMatch = raw.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})/);
+        if (dmyMatch) {
+          const yr = dmyMatch[3].length === 2 ? Number("20" + dmyMatch[3]) : Number(dmyMatch[3]);
+          dt = new Date(yr, Number(dmyMatch[2]) - 1, Number(dmyMatch[1]));
+        } else {
+          const parsed = new Date(raw);
+          if (!Number.isNaN(parsed.getTime())) dt = parsed;
+        }
+      }
+
+      if (!dt || Number.isNaN(dt.getTime())) return raw;
+      return `${dt.getDate()} ${BULAN_ID[dt.getMonth()]} ${dt.getFullYear()}`;
+    }
+
+    function isDateColumnName(colName) {
+      const u = String(colName || "").toUpperCase();
+      return u.includes("TGL") || u.includes("TANGGAL") || u.includes("DATE");
+    }
+
+    function parseCurrency(val) {
+      if (val === null || val === undefined) return 0;
+      if (typeof val === "number") return Number.isFinite(val) ? val : 0;
+      let s = String(val).replace(/rp|idr|\s+/gi, "").trim();
+      if (!s || s === "-") return 0;
+      if (s.includes(",") && s.includes(".")) {
+        if (s.indexOf(".") < s.indexOf(",")) {
+          s = s.replace(/\./g, "").replace(",", ".");
+        } else {
+          s = s.replace(/,/g, "");
+        }
+      } else if (s.includes(",")) {
+        const parts = s.split(",");
+        if (parts[parts.length - 1].length === 3) s = s.replace(/,/g, "");
+        else s = s.replace(",", ".");
+      } else if ((s.match(/\./g) || []).length > 1) {
+        s = s.replace(/\./g, "");
+      }
+      const n = parseFloat(s);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    function hasValue(val) {
+      if (val === null || val === undefined) return false;
+      const s = String(val).trim().toUpperCase();
+      return s !== "" && s !== "-" && s !== "NAN" && s !== "NAT" && s !== "NONE" && s !== "NULL";
+    }
+
+    // =========================================================================
+    // CSV PARSER & UNIQUE COLUMN NORMALIZER
+    // =========================================================================
+    function parseCsvMatrix(csvText) {
+      const rows = [];
+      let row = [];
+      let cell = "";
+      let inQuotes = false;
+
+      for (let i = 0; i < csvText.length; i++) {
+        const ch = csvText[i];
+        const next = csvText[i + 1];
+
+        if (inQuotes) {
+          if (ch === '"' && next === '"') {
+            cell += '"';
+            i++;
+          } else if (ch === '"') {
+            inQuotes = false;
+          } else {
+            cell += ch;
+          }
+        } else {
+          if (ch === '"') {
+            inQuotes = true;
+          } else if (ch === ",") {
+            row.push(cell);
+            cell = "";
+          } else if (ch === "\r" && next === "\n") {
+            row.push(cell);
+            rows.push(row);
+            row = [];
+            cell = "";
+            i++;
+          } else if (ch === "\n" || ch === "\r") {
+            row.push(cell);
+            rows.push(row);
+            row = [];
+            cell = "";
+          } else {
+            cell += ch;
+          }
+        }
+      }
+      if (cell.length > 0 || row.length > 0) {
+        row.push(cell);
+        rows.push(row);
+      }
+      return rows;
+    }
+
+    function matrixToObjects(matrix, headerRowIndex) {
+      if (!Array.isArray(matrix) || matrix.length <= headerRowIndex) return [];
+      const rawHeaders = matrix[headerRowIndex] || [];
+      const seen = {};
+      const headers = rawHeaders.map((h, idx) => {
+        let base = String(h || "").replace(/\s+/g, " ").trim().toUpperCase();
+        if (!base) base = `KOLOM_${idx + 1}`;
+        if (Object.prototype.hasOwnProperty.call(seen, base)) {
+          seen[base] += 1;
+          return `${base} (${seen[base]})`;
+        }
+        seen[base] = 0;
+        return base;
+      });
+
+      const records = [];
+      for (let r = headerRowIndex + 1; r < matrix.length; r++) {
+        const line = matrix[r];
+        if (!line || line.every(v => !String(v || "").trim())) continue;
+        const obj = {};
+        for (let c = 0; c < headers.length; c++) {
+          obj[headers[c]] = line[c] !== undefined ? String(line[c]).trim() : "";
+        }
+        records.push(obj);
+      }
+      return records;
+    }
+
+    async function fetchSheetCsv(url, headerRowIndex) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 9000);
+      try {
+        const res = await fetch(url, { signal: controller.signal, cache: "no-store" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const text = await res.text();
+        if (!text || text.trim().startsWith("<!DOCTYPE html") || text.trim().startsWith("<html")) {
+          throw new Error("Respons bukan CSV yang valid");
+        }
+        const matrix = parseCsvMatrix(text);
+        return matrixToObjects(matrix, headerRowIndex);
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    }
+
+    // =========================================================================
+    // KOLOM & LOGIKA DOMAIN (INTERNAL vs KOMERSIAL EKSTERNAL)
+    // =========================================================================
+    function findColumn(columns, predicates) {
+      for (const pred of predicates) {
+        const match = columns.find(c => pred(String(c).toUpperCase().trim()));
+        if (match) return match;
+      }
+      return null;
+    }
+
+    function getOrderSchema(rows) {
+      const cols = rows.length ? Object.keys(rows[0]) : [];
+      return {
+        kategori: findColumn(cols, [c => c === "KATEGORI", c => c.includes("KATEGORI")]),
+        customer: findColumn(cols, [
+          c => c === "CUSTOMER",
+          c => c.includes("CUSTOMER") && !c.includes("PIC") && !c.includes("PO") && !c.includes("TGL") && !c.includes("TERIMA")
+        ]),
+        vendor: findColumn(cols, [c => c === "VENDOR", c => c.includes("VENDOR"), c => c.includes("SUPPLIER")]),
+        status: findColumn(cols, [c => c === "STATUS", c => c.includes("STATUS")]),
+        item: findColumn(cols, [c => c === "ITEM", c => c.includes("ITEM"), c => c.includes("NAMA BARANG")]),
+        qty: findColumn(cols, [c => c === "QTY", c => c.includes("QTY")]),
+        noSq: findColumn(cols, [c => c === "NO SQ", c => c.includes("NO SQ"), c => c === "SQ"]),
+        noPoCust: findColumn(cols, [c => c.includes("NO PO CUSTOMER"), c => c.includes("PO CUSTOMER")]),
+        noSo: findColumn(cols, [c => c === "NO SO", c => c.includes("NO SO")]),
+        noPr: findColumn(cols, [c => c === "NO PR", c => c.includes("NO PR")]),
+        noPo: findColumn(cols, [c => c === "NO PO", c => c.includes("NO PO") && !c.includes("CUSTOMER")]),
+        noBpv: findColumn(cols, [c => c === "NO BPV", c => c.includes("BPV") && !c.includes("TGL")]),
+        tglBpv: findColumn(cols, [c => c.includes("TGL BPV") || c.includes("TANGGAL BPV")]),
+        tglGrn: findColumn(cols, [c => c.includes("TGL GRN") || c.includes("GRN")]),
+        tglDo: findColumn(cols, [c => c.includes("TGL DO") || c === "NO DO"]),
+        tglTerima: findColumn(cols, [c => c.includes("TGL CUST TERIMA") || c.includes("TGL TERIMA") || c.includes("TERIMA")]),
+        jual: findColumn(cols, [c => c.includes("TOTAL HARGA JUAL"), c => c.includes("HARGA JUAL")]),
+        beli: findColumn(cols, [c => c.includes("TOTAL HARGA BELI"), c => c.includes("HARGA BELI")])
+      };
+    }
+
+    function getRfqSchema(rows) {
+      const cols = rows.length ? Object.keys(rows[0]) : [];
+      return {
+        tglRfq: findColumn(cols, [c => c.includes("TANGGAL RFQ"), c => c.includes("TGL RFQ"), c => c.includes("RFQ") && c.includes("TGL")]),
+        kategori: findColumn(cols, [c => c === "KATEGORI", c => c.includes("KATEGORI")]),
+        customer: findColumn(cols, [c => c === "CUSTOMER", c => c.includes("CUSTOMER") && !c.includes("PIC")]),
+        item: findColumn(cols, [c => c === "ITEM", c => c.includes("ITEM")]),
+        qty: findColumn(cols, [c => c === "QTY", c => c.includes("QTY")]),
+        status: findColumn(cols, [c => c === "STATUS", c => c.includes("STATUS")]),
+        kendala: findColumn(cols, [c => c === "KENDALA", c => c.includes("KENDALA")]),
+        noSq: findColumn(cols, [c => c === "NO SQ", c => c.includes("NO SQ"), c => c === "SQ"])
+      };
+    }
+
+    // Internal = SIBIMA & AMIN (mengecualikan SIBIMATECH)
+    function isInternalRow(row, katCol, custCol) {
+      const kat = katCol ? String(row[katCol] || "").toUpperCase().trim() : "";
+      const cust = custCol ? String(row[custCol] || "").toUpperCase().trim() : "";
+      if (
+        kat.includes("SIBIMATECH") ||
+        kat.includes("SIBIMA TECH") ||
+        cust.includes("SIBIMATECH") ||
+        cust.includes("SIBIMA TECH")
+      ) {
+        return false;
+      }
+      return (
+        ["SIBIMA", "GA SIBIMA", "AMIN", "GA AMIN", "GA AMIIN"].includes(kat) ||
+        kat.includes("SIBIMA BERKARYA MANDIRI") ||
+        cust.includes("SIBIMA BERKARYA MANDIRI") ||
+        kat.includes("AGRO MINA") ||
+        cust.includes("AGRO MINA")
+      );
+    }
+
+    function showStatusBanner(message, type = "info") {
+      const box = document.getElementById("statusBox");
+      const text = document.getElementById("statusBoxText");
+      text.textContent = message;
+      box.className = "rounded-xl px-4 py-3 text-xs sm:text-sm font-medium border flex items-center justify-between gap-3 ";
+      if (type === "success") {
+        box.className += "bg-emerald-50 text-emerald-800 border-emerald-200";
+      } else if (type === "warn") {
+        box.className += "bg-amber-50 text-amber-800 border-amber-200";
+      } else {
+        box.className += "bg-blue-50 text-blue-800 border-blue-200";
+      }
+      box.classList.remove("hidden");
+    }
+
+    // =========================================================================
+    // DATA LOADING & FILTER POPULATION
+    // =========================================================================
+    async function loadDashboardData(showFeedback = false) {
+      const icon = document.getElementById("refreshIcon");
+      icon.classList.add("animate-spin");
+
+      try {
+        const [rfqData, orderData] = await Promise.all([
+          fetchSheetCsv(SHEET_URLS.rfq, 1),
+          fetchSheetCsv(SHEET_URLS.order, 0)
+        ]);
+
+        if (!rfqData.length && !orderData.length) {
+          throw new Error("Data kosong dari Google Sheets");
+        }
+
+        state.rfqRows = rfqData;
+        state.orderRows = orderData;
+        state.isLive = true;
+
+        document.getElementById("dataSourceBadge").textContent = "Live Google Sheets";
+        document.getElementById("dataSourceBadge").className =
+          "px-2.5 py-0.5 text-xs font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200";
+        document.getElementById("syncDot").className = "w-2 h-2 rounded-full bg-emerald-500";
+
+        if (showFeedback) {
+          showStatusBanner("Sinkronisasi berhasil: data terbaru dimuat langsung dari Google Sheets.", "success");
+        }
+      } catch (err) {
+        state.rfqRows = SAMPLE_RFQ_ROWS;
+        state.orderRows = SAMPLE_ORDER_ROWS;
+        state.isLive = false;
+
+        document.getElementById("dataSourceBadge").textContent = "Data Contoh (Fallback)";
+        document.getElementById("dataSourceBadge").className =
+          "px-2.5 py-0.5 text-xs font-semibold rounded-full bg-amber-50 text-amber-800 border border-amber-200";
+        document.getElementById("syncDot").className = "w-2 h-2 rounded-full bg-amber-500";
+
+        showStatusBanner(
+          `Akses langsung CSV Google Sheets terhambat (${err.message || "CORS/Jaringan"}). Menampilkan data contoh agar dashboard tetap interaktif.`,
+          "warn"
+        );
+      } finally {
+        icon.classList.remove("animate-spin");
+        const now = new Date();
+        const hh = String(now.getHours()).padStart(2, "0");
+        const mm = String(now.getMinutes()).padStart(2, "0");
+        const ss = String(now.getSeconds()).padStart(2, "0");
+        document.getElementById("syncTimestamp").textContent = `${formatTanggalIndo(now)}, ${hh}.${mm}.${ss} WIB`;
+        document.getElementById("syncCounts").textContent =
+          `${formatNumber(state.rfqRows.length)} baris RFQ • ${formatNumber(state.orderRows.length)} baris Order`;
+
+        populateFilterOptions();
+        renderAllTabs();
+      }
+    }
+
+    function populateFilterOptions() {
+      const oSchema = getOrderSchema(state.orderRows);
+      const rSchema = getRfqSchema(state.rfqRows);
+
+      const statusSel = document.getElementById("filterStatusOrder");
+      const katSel = document.getElementById("filterKategori");
+      const vendSel = document.getElementById("filterVendor");
+
+      const prevStatus = statusSel.value;
+      const prevKat = katSel.value;
+      const prevVend = vendSel.value;
+
+      const statuses = new Set();
+      const kats = new Set();
+      const vendors = new Set();
+
+      state.orderRows.forEach(r => {
+        if (oSchema.status && hasValue(r[oSchema.status])) statuses.add(String(r[oSchema.status]).trim());
+        if (oSchema.kategori && hasValue(r[oSchema.kategori])) kats.add(String(r[oSchema.kategori]).trim());
+        if (oSchema.vendor && hasValue(r[oSchema.vendor])) vendors.add(String(r[oSchema.vendor]).trim());
+      });
+      state.rfqRows.forEach(r => {
+        if (rSchema.status && hasValue(r[rSchema.status])) statuses.add(String(r[rSchema.status]).trim());
+        if (rSchema.kategori && hasValue(r[rSchema.kategori])) kats.add(String(r[rSchema.kategori]).trim());
+      });
+
+      statusSel.innerHTML = `<option value="ALL">Semua Status</option>` +
+        [...statuses].sort().map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join("");
+
+      katSel.innerHTML = `<option value="ALL">Semua Kategori</option>` +
+        [...kats].sort().map(k => `<option value="${escapeHtml(k)}">${escapeHtml(k)}</option>`).join("");
+
+      vendSel.innerHTML = `<option value="ALL">Semua Vendor</option>` +
+        [...vendors].sort().map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join("");
+
+      if ([...statusSel.options].some(o => o.value === prevStatus)) statusSel.value = prevStatus;
+      if ([...katSel.options].some(o => o.value === prevKat)) katSel.value = prevKat;
+      if ([...vendSel.options].some(o => o.value === prevVend)) vendSel.value = prevVend;
+    }
+
+    function getActiveFilters() {
+      return {
+        status: document.getElementById("filterStatusOrder").value,
+        kategori: document.getElementById("filterKategori").value,
+        vendor: document.getElementById("filterVendor").value,
+        keyword: document.getElementById("filterKeyword").value.trim().toLowerCase()
+      };
+    }
+
+    function getFilteredOrders() {
+      const f = getActiveFilters();
+      const sc = getOrderSchema(state.orderRows);
+      return state.orderRows.filter(row => {
+        if (f.status !== "ALL" && sc.status && String(row[sc.status] || "").trim() !== f.status) return false;
+        if (f.kategori !== "ALL" && sc.kategori && String(row[sc.kategori] || "").trim() !== f.kategori) return false;
+        if (f.vendor !== "ALL" && sc.vendor && String(row[sc.vendor] || "").trim() !== f.vendor) return false;
+        if (f.keyword) {
+          const blob = Object.values(row).join(" ").toLowerCase();
+          if (!blob.includes(f.keyword)) return false;
+        }
+        return true;
+      });
+    }
+
+    function getFilteredRfqs() {
+      const f = getActiveFilters();
+      const sc = getRfqSchema(state.rfqRows);
+      return state.rfqRows.filter(row => {
+        if (f.status !== "ALL" && sc.status && String(row[sc.status] || "").trim() !== f.status) return false;
+        if (f.kategori !== "ALL" && sc.kategori && String(row[sc.kategori] || "").trim() !== f.kategori) return false;
+        if (f.keyword) {
+          const blob = Object.values(row).join(" ").toLowerCase();
+          if (!blob.includes(f.keyword)) return false;
+        }
+        return true;
+      });
+    }
+
+    // =========================================================================
+    // TABLE RENDERER & ESCAPE
+    // =========================================================================
+    function escapeHtml(str) {
+      return String(str ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function renderDynamicTable(theadId, tbodyId, rows, preferredCols = [], emptyText = "Tidak ada data.") {
+      const thead = document.getElementById(theadId);
+      const tbody = document.getElementById(tbodyId);
+
+      if (!rows || rows.length === 0) {
+        thead.innerHTML = "";
+        tbody.innerHTML = `<tr><td class="px-4 py-6 text-center text-slate-400">${escapeHtml(emptyText)}</td></tr>`;
+        return;
+      }
+
+      const allCols = Object.keys(rows[0]);
+      const orderedCols = [];
+      preferredCols.forEach(c => {
+        if (c && allCols.includes(c) && !orderedCols.includes(c)) orderedCols.push(c);
+      });
+      allCols.forEach(c => {
+        if (!orderedCols.includes(c) && !c.startsWith("_")) orderedCols.push(c);
+      });
+
+      const displayCols = orderedCols.slice(0, 14);
+      thead.innerHTML = `<tr>${displayCols.map(c => `<th class="px-3 py-2.5 border-b whitespace-nowrap">${escapeHtml(c)}</th>`).join("")}</tr>`;
+
+      tbody.innerHTML = rows.slice(0, 200).map(r => {
+        const tds = displayCols.map(c => {
+          let val = r[c];
+          if (c === "Status Proses" || c === "Pembayaran (BPV)" || c === "Status Sampai" || c === "Status Masuk Order") {
+            const s = String(val || "");
+            const isPos = s.startsWith("✅");
+            const badgeCls = isPos ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800";
+            return `<td class="px-3 py-2 whitespace-nowrap"><span class="px-2 py-0.5 rounded-full text-[11px] font-semibold ${badgeCls}">${escapeHtml(s)}</span></td>`;
+          }
+          if (isDateColumnName(c)) {
+            val = formatTanggalIndo(val);
+          } else if (String(c).includes("HARGA") || String(c).includes("MARGIN") || String(c).includes("HPP")) {
+            const num = parseCurrency(val);
+            if (num > 0 || String(val || "").trim() !== "") val = formatRupiah(num);
+          }
+          return `<td class="px-3 py-2 max-w-[260px] truncate" title="${escapeHtml(val)}">${escapeHtml(hasValue(val) ? val : "-")}</td>`;
+        }).join("");
+        return `<tr class="hover:bg-slate-50">${tds}</tr>`;
+      }).join("");
+    }
+
+    // =========================================================================
+    // RENDER ALL 5 TABS
+    // =========================================================================
+    function renderAllTabs() {
+      const orders = getFilteredOrders();
+      const rfqs = getFilteredRfqs();
+      const oSchema = getOrderSchema(state.orderRows);
+      const rSchema = getRfqSchema(state.rfqRows);
+
+      // --- TAB 1: KOMERSIAL EKSTERNAL ---
+      const internalMask = orders.map(r => isInternalRow(r, oSchema.kategori, oSchema.customer));
+      const internalRows = orders.filter((_, idx) => internalMask[idx]);
+
+      const commercialRows = orders.filter((r, idx) => {
+        if (internalMask[idx]) return false;
+        const st = oSchema.status ? String(r[oSchema.status] || "").toUpperCase().trim() : "";
+        return st !== "CANCEL" && st !== "PENDING";
+      });
+
+      const rfqExtRows = rfqs.filter(r => !isInternalRow(r, rSchema.kategori, rSchema.customer));
+      const rfqExtCount = rfqExtRows.length;
+      const terbitSqCount = rSchema.noSq
+        ? rfqExtRows.filter(r => hasValue(r[rSchema.noSq])).length
+        : 0;
+
+      const jadiPoUserCount = oSchema.noPoCust
+        ? commercialRows.filter(r => hasValue(r[oSchema.noPoCust]) || (oSchema.noSo && hasValue(r[oSchema.noSo]))).length
+        : commercialRows.length;
+
+      const uniquePoCustSet = new Set(
+        oSchema.noPoCust ? commercialRows.map(r => String(r[oSchema.noPoCust] || "").trim()).filter(hasValue) : []
+      );
+      const uniquePoCustCount = uniquePoCustSet.size > 0 ? uniquePoCustSet.size : commercialRows.length;
+
+      const sudahTerimaExtCount = commercialRows.filter(r => {
+        const st = oSchema.status ? String(r[oSchema.status] || "").toUpperCase().trim() : "";
+        const grn = oSchema.tglGrn ? hasValue(r[oSchema.tglGrn]) : false;
+        const trm = oSchema.tglTerima ? hasValue(r[oSchema.tglTerima]) : false;
+        return st === "SUDAH DITERIMA" || grn || trm;
+      }).length;
+
+      let totalHpp = 0;
+      let totalJualExc = 0;
+      commercialRows.forEach(r => {
+        totalHpp += oSchema.beli ? parseCurrency(r[oSchema.beli]) : 0;
+        totalJualExc += oSchema.jual ? parseCurrency(r[oSchema.jual]) : 0;
+      });
+      const totalJualInc = totalJualExc * 1.11;
+      const estMargin = totalJualExc - totalHpp;
+      const marginPct = totalJualExc > 0 ? (estMargin / totalJualExc) * 100 : 0;
+
+      document.getElementById("kpiRfqExt").textContent = formatNumber(rfqExtCount);
+      document.getElementById("kpiTerbitSq").textContent = formatNumber(terbitSqCount);
+      document.getElementById("kpiJadiPoUser").textContent = formatNumber(jadiPoUserCount);
+      document.getElementById("subJadiPoUser").textContent = `${formatNumber(uniquePoCustCount)} PO Customer unik`;
+      document.getElementById("kpiSudahTerimaExt").textContent = formatNumber(sudahTerimaExtCount);
+      document.getElementById("kpiTotalHpp").textContent = formatRupiah(totalHpp);
+      document.getElementById("kpiJualExc").textContent = formatRupiah(totalJualExc);
+      document.getElementById("kpiJualInc").textContent = formatRupiah(totalJualInc);
+      document.getElementById("kpiMargin").textContent = formatRupiah(estMargin);
+      document.getElementById("subMarginPct").textContent = `${marginPct.toFixed(1).replace(".", ",")}% dari penjualan excl. PPN`;
+      document.getElementById("countKomersialRows").textContent = `${formatNumber(commercialRows.length)} baris`;
+
+      state.lastDatasets.komersial = commercialRows;
+      renderDynamicTable(
+        "theadKomersial",
+        "tbodyKomersial",
+        commercialRows,
+        [
+          oSchema.kategori, oSchema.customer, oSchema.noPoCust, "TGL PO CUSTOMER",
+          oSchema.noSq, oSchema.noSo, oSchema.noPo, oSchema.item, oSchema.qty,
+          oSchema.jual, oSchema.beli, oSchema.status, oSchema.tglGrn, oSchema.tglTerima
+        ],
+        "Tidak ada transaksi komersial eksternal sesuai filter."
+      );
+
+      // --- TAB 1: OPERASIONAL INTERNAL (SIBIMA & AMIN) ---
+      let intDiproses = 0;
+      let intBpv = 0;
+      let intSampai = 0;
+
+      const internalEnriched = internalRows.map(r => {
+        const st = oSchema.status ? String(r[oSchema.status] || "").toUpperCase().trim() : "";
+        const hasGrn = oSchema.tglGrn ? hasValue(r[oSchema.tglGrn]) : false;
+        const hasTrm = oSchema.tglTerima ? hasValue(r[oSchema.tglTerima]) : false;
+        const sampai = st === "SUDAH DITERIMA" || hasGrn || hasTrm;
+
+        const hasBpvVal =
+          (oSchema.noBpv && hasValue(r[oSchema.noBpv])) ||
+          (oSchema.tglBpv && hasValue(r[oSchema.tglBpv]));
+
+        const hasPrVal = oSchema.noPr && hasValue(r[oSchema.noPr]);
+        const hasPoVal = oSchema.noPo && hasValue(r[oSchema.noPo]);
+        const diproses = hasPrVal || hasPoVal || hasBpvVal || sampai;
+
+        if (diproses) intDiproses++;
+        if (hasBpvVal) intBpv++;
+        if (sampai) intSampai++;
+
+        return {
+          "Status Proses": diproses ? "✅ Sudah Diproses" : "⏳ Belum Diproses",
+          "Pembayaran (BPV)": hasBpvVal ? "✅ Sudah Diajukan" : "⏳ Belum Diajukan",
+          "Status Sampai": sampai ? "✅ Sudah Sampai" : "⏳ Belum Sampai",
+          ...r
+        };
+      });
+
+      document.getElementById("kpiIntTotal").textContent = formatNumber(internalEnriched.length);
+      document.getElementById("kpiIntDiproses").textContent = formatNumber(intDiproses);
+      document.getElementById("subIntDiproses").textContent = `Belum diproses: ${formatNumber(internalEnriched.length - intDiproses)} item`;
+      document.getElementById("kpiIntBpv").textContent = formatNumber(intBpv);
+      document.getElementById("subIntBpv").textContent = `Belum BPV: ${formatNumber(internalEnriched.length - intBpv)} item`;
+      document.getElementById("kpiIntSampai").textContent = formatNumber(intSampai);
+      document.getElementById("subIntSampai").textContent = `Belum sampai: ${formatNumber(internalEnriched.length - intSampai)} item`;
+      document.getElementById("countInternalRows").textContent = `${formatNumber(internalEnriched.length)} baris`;
+
+      state.lastDatasets.internal = internalEnriched;
+      renderDynamicTable(
+        "theadInternal",
+        "tbodyInternal",
+        internalEnriched,
+        [
+          "Status Proses", "Pembayaran (BPV)", "Status Sampai",
+          oSchema.kategori, oSchema.customer, oSchema.item, oSchema.qty,
+          oSchema.status, oSchema.noPr, "TGL PR", oSchema.noPo, "TGL PO",
+          oSchema.noBpv, oSchema.tglBpv, oSchema.tglGrn, oSchema.tglTerima
+        ],
+        "Tidak ada transaksi internal (SIBIMA & AMIN) sesuai filter."
+      );
+
+      // --- TAB 2: MONITORING RFQ (PENDING & KENDALA) ---
+      const rfqHoldList = [];
+      const rfqActiveList = [];
+
+      rfqs.forEach(r => {
+        const stVal = rSchema.status ? String(r[rSchema.status] || "").toUpperCase().trim() : "";
+        const knVal = rSchema.kendala ? String(r[rSchema.kendala] || "").toUpperCase().trim() : "";
+        const isHoldFollowup = stVal.includes("PENDING") && knVal.includes("HOLD") && !stVal.includes("CLOSE");
+
+        if (isHoldFollowup) {
+          rfqHoldList.push(r);
+        } else {
+          const isDoneOrCancel = ["COMPLETE", "DONE", "CLOSED", "SELESAI", "CLOSE", "CANCEL"].some(k => stVal.includes(k));
+          if (!isDoneOrCancel) rfqActiveList.push(r);
+        }
+      });
+
+      document.getElementById("kpiRfqAll").textContent = formatNumber(rfqs.length);
+      document.getElementById("kpiRfqPendingActive").textContent = formatNumber(rfqActiveList.length);
+      document.getElementById("kpiRfqHoldFollowup").textContent = formatNumber(rfqHoldList.length);
+
+      state.lastDatasets.rfqActive = rfqActiveList;
+      state.lastDatasets.rfqHold = rfqHoldList;
+
+      const rfqCols = [
+        rSchema.tglRfq, rSchema.status, rSchema.kendala,
+        rSchema.kategori, rSchema.customer, rSchema.item, rSchema.qty, rSchema.noSq
+      ];
+      renderDynamicTable("theadRfqActive", "tbodyRfqActive", rfqActiveList, rfqCols, "Tidak ada antrean RFQ aktif / pending.");
+      renderDynamicTable("theadRfqHold", "tbodyRfqHold", rfqHoldList, rfqCols, "Tidak ada RFQ berstatus PENDING + HOLD.");
+
+      // --- TAB 3: KONVERSI SQ KE PO ---
+      const orderSqSet = new Set(
+        oSchema.noSq
+          ? state.orderRows.map(r => String(r[oSchema.noSq] || "").trim()).filter(hasValue)
+          : []
+      );
+
+      const sqMap = new Map();
+      state.rfqRows.forEach(r => {
+        if (!rSchema.noSq) return;
+        const sq = String(r[rSchema.noSq] || "").trim();
+        if (!hasValue(sq)) return;
+        if (!sqMap.has(sq)) {
+          sqMap.set(sq, {
+            noSq: sq,
+            masukOrder: orderSqSet.has(sq),
+            rfqItemCount: 0,
+            kats: new Set(),
+            custs: new Set(),
+            stats: new Set()
+          });
+        }
+        const entry = sqMap.get(sq);
+        entry.rfqItemCount += 1;
+        if (rSchema.kategori && hasValue(r[rSchema.kategori])) entry.kats.add(String(r[rSchema.kategori]).trim());
+        if (rSchema.customer && hasValue(r[rSchema.customer])) entry.custs.add(String(r[rSchema.customer]).trim());
+        if (rSchema.status && hasValue(r[rSchema.status])) entry.stats.add(String(r[rSchema.status]).trim());
+      });
+
+      const allSqEntries = [...sqMap.values()];
+      const masukCount = allSqEntries.filter(x => x.masukOrder).length;
+      const belumCount = allSqEntries.length - masukCount;
+      const convPct = allSqEntries.length > 0 ? (masukCount / allSqEntries.length) * 100 : 0;
+
+      document.getElementById("kpiSqUnique").textContent = formatNumber(allSqEntries.length);
+      document.getElementById("kpiSqMasuk").textContent = formatNumber(masukCount);
+      document.getElementById("kpiSqBelum").textContent = formatNumber(belumCount);
+      document.getElementById("kpiSqConvRate").textContent = `${convPct.toFixed(2).replace(".", ",")}%`;
+
+      const sqFilterVal = document.getElementById("filterSqStatus").value;
+      const kw = getActiveFilters().keyword;
+      const sqFiltered = allSqEntries.filter(x => {
+        if (sqFilterVal === "MASUK" && !x.masukOrder) return false;
+        if (sqFilterVal === "BELUM" && x.masukOrder) return false;
+        if (kw) {
+          const hay = `${x.noSq} ${[...x.kats].join(" ")} ${[...x.custs].join(" ")} ${[...x.stats].join(" ")}`.toLowerCase();
+          if (!hay.includes(kw)) return false;
+        }
+        return true;
+      });
+
+      state.lastDatasets.sqList = sqFiltered;
+      const tbodySq = document.getElementById("tbodySqConversion");
+      if (sqFiltered.length === 0) {
+        tbodySq.innerHTML = `<tr><td colspan="6" class="px-4 py-6 text-center text-slate-400">Tidak ada NO SQ sesuai filter.</td></tr>`;
+      } else {
+        tbodySq.innerHTML = sqFiltered.map(x => `
+          <tr class="hover:bg-slate-50">
+            <td class="px-3.5 py-2.5 font-bold text-slate-900 whitespace-nowrap">${escapeHtml(x.noSq)}</td>
+            <td class="px-3.5 py-2.5 whitespace-nowrap">
+              <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                x.masukOrder ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
+              }">${x.masukOrder ? "✅ Masuk Order" : "⏳ Belum Masuk Order"}</span>
+            </td>
+            <td class="px-3.5 py-2.5">${formatNumber(x.rfqItemCount)}</td>
+            <td class="px-3.5 py-2.5">${escapeHtml([...x.kats].join(", ") || "-")}</td>
+            <td class="px-3.5 py-2.5">${escapeHtml([...x.custs].join(", ") || "-")}</td>
+            <td class="px-3.5 py-2.5">${escapeHtml([...x.stats].join(", ") || "-")}</td>
+          </tr>
+        `).join("");
+      }
+
+      // --- TAB 4: ANALISIS VENDOR ---
+      const vendorStatsMap = new Map();
+      orders.forEach(r => {
+        const vName = oSchema.vendor && hasValue(r[oSchema.vendor]) ? String(r[oSchema.vendor]).trim() : "TANPA VENDOR";
+        const st = oSchema.status ? String(r[oSchema.status] || "").toUpperCase().trim() : "";
+        const isOut = st !== "SUDAH DITERIMA" && st !== "CANCEL";
+        const beliVal = oSchema.beli ? parseCurrency(r[oSchema.beli]) : 0;
+
+        if (!vendorStatsMap.has(vName)) {
+          vendorStatsMap.set(vName, { vendor: vName, itemCount: 0, outCount: 0, totalBeli: 0 });
+        }
+        const vs = vendorStatsMap.get(vName);
+        vs.itemCount += 1;
+        if (isOut) vs.outCount += 1;
+        vs.totalBeli += beliVal;
+      });
+
+      const vendorSorted = [...vendorStatsMap.values()].sort((a, b) => b.itemCount - a.itemCount);
+      document.getElementById("kpiVendorCountBadge").textContent = `${formatNumber(vendorSorted.length)} Vendor Aktif`;
+
+      const maxVendorCount = vendorSorted.length > 0 ? vendorSorted[0].itemCount : 1;
+      document.getElementById("vendorBarChart").innerHTML = vendorSorted.length === 0
+        ? `<div class="text-xs text-slate-400 py-8 text-center">Belum ada data vendor untuk ditampilkan.</div>`
+        : vendorSorted.slice(0, 15).map(v => {
+            const pct = Math.max(4, Math.round((v.itemCount / maxVendorCount) * 100));
+            return `
+              <div class="space-y-1">
+                <div class="flex justify-between text-xs gap-2">
+                  <span class="font-semibold text-slate-700 truncate" title="${escapeHtml(v.vendor)}">${escapeHtml(v.vendor)}</span>
+                  <span class="font-bold text-blue-700 shrink-0">${formatNumber(v.itemCount)} item</span>
+                </div>
+                <div class="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden">
+                  <div class="h-full bg-blue-600 rounded-full" style="width:${pct}%"></div>
+                </div>
+              </div>
+            `;
+          }).join("");
+
+      document.getElementById("tbodyVendorAnalytics").innerHTML = vendorSorted.length === 0
+        ? `<tr><td colspan="4" class="px-4 py-6 text-center text-slate-400">Tidak ada data vendor.</td></tr>`
+        : vendorSorted.map(v => `
+            <tr class="hover:bg-slate-50">
+              <td class="px-3.5 py-2.5 font-semibold text-slate-900">${escapeHtml(v.vendor)}</td>
+              <td class="px-3.5 py-2.5 font-bold text-blue-700">${formatNumber(v.itemCount)}</td>
+              <td class="px-3.5 py-2.5 text-amber-700 font-semibold">${formatNumber(v.outCount)}</td>
+              <td class="px-3.5 py-2.5">${formatRupiah(v.totalBeli)}</td>
+            </tr>
+          `).join("");
+
+      // --- TAB 5: OUTSTANDING SUPPLY VENDOR ---
+      const allOutstanding = orders.filter(r => {
+        const st = oSchema.status ? String(r[oSchema.status] || "").toUpperCase().trim() : "";
+        return st !== "SUDAH DITERIMA" && st !== "CANCEL";
+      });
+
+      const outVendSel = document.getElementById("filterOutstandingVendor");
+      const prevOutVend = outVendSel.value;
+      const outVendors = [...new Set(
+        allOutstanding.map(r => (oSchema.vendor && hasValue(r[oSchema.vendor]) ? String(r[oSchema.vendor]).trim() : "TANPA VENDOR"))
+      )].sort();
+
+      outVendSel.innerHTML = `<option value="ALL">Semua Vendor Outstanding</option>` +
+        outVendors.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join("");
+      if ([...outVendSel.options].some(o => o.value === prevOutVend)) outVendSel.value = prevOutVend;
+
+      const selectedOutVend = outVendSel.value;
+      const filteredOutstanding = allOutstanding.filter(r => {
+        if (selectedOutVend === "ALL") return true;
+        const vName = oSchema.vendor && hasValue(r[oSchema.vendor]) ? String(r[oSchema.vendor]).trim() : "TANPA VENDOR";
+        return vName === selectedOutVend;
+      });
+
+      let outQtySum = 0;
+      let outValSum = 0;
+      filteredOutstanding.forEach(r => {
+        outQtySum += oSchema.qty ? parseCurrency(r[oSchema.qty]) : 0;
+        outValSum += oSchema.beli ? parseCurrency(r[oSchema.beli]) : 0;
+      });
+
+      document.getElementById("kpiOutCount").textContent = formatNumber(filteredOutstanding.length);
+      document.getElementById("kpiOutQty").textContent = formatNumber(outQtySum);
+      document.getElementById("kpiOutValue").textContent = formatRupiah(outValSum);
+
+      state.lastDatasets.outstanding = filteredOutstanding;
+      renderDynamicTable(
+        "theadOutstanding",
+        "tbodyOutstanding",
+        filteredOutstanding,
+        [
+          oSchema.vendor, oSchema.kategori, oSchema.customer, oSchema.item,
+          oSchema.qty, oSchema.noPo, "TGL PO", oSchema.status, "TGL ESTIMASI SAMPAI"
+        ],
+        "Tidak ada item outstanding supply sesuai filter."
+      );
+    }
+
+    // =========================================================================
+    // CSV EXPORT HELPER
+    // =========================================================================
+    function downloadCsv(rows, filename) {
+      if (!rows || rows.length === 0) {
+        showStatusBanner("Tidak ada data untuk di-export.", "warn");
+        return;
+      }
+      const headers = Object.keys(rows[0]);
+      const lines = [
+        headers.map(h => `"${String(h).replace(/"/g, '""')}"`).join(","),
+        ...rows.map(r =>
+          headers.map(h => {
+            let v = r[h] ?? "";
+            if (isDateColumnName(h)) v = formatTanggalIndo(v);
+            return `"${String(v).replace(/"/g, '""')}"`;
+          }).join(",")
+        )
+      ];
+      const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showStatusBanner(`Berhasil mengunduh ${filename}.`, "success");
+    }
+
+    // =========================================================================
+    // EVENT LISTENERS
+    // =========================================================================
+    document.querySelectorAll(".tab-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const target = btn.dataset.tab;
+        state.activeTab = target;
+        document.querySelectorAll(".tab-panel").forEach(panel => {
+          panel.classList.toggle("hidden", panel.id !== `tab-${target}`);
+        });
+        document.querySelectorAll(".tab-btn").forEach(b => {
+          const active = b.dataset.tab === target;
+          b.classList.toggle("bg-blue-600", active);
+          b.classList.toggle("text-white", active);
+          b.classList.toggle("text-slate-600", !active);
+          b.classList.toggle("hover:bg-slate-100", !active);
+        });
+      });
+    });
+
+    ["filterStatusOrder", "filterKategori", "filterVendor", "filterKeyword", "filterSqStatus", "filterOutstandingVendor"].forEach(id => {
+      document.getElementById(id).addEventListener("input", renderAllTabs);
+      document.getElementById(id).addEventListener("change", renderAllTabs);
+    });
+
+    document.getElementById("btnResetFilters").addEventListener("click", () => {
+      document.getElementById("filterStatusOrder").value = "ALL";
+      document.getElementById("filterKategori").value = "ALL";
+      document.getElementById("filterVendor").value = "ALL";
+      document.getElementById("filterKeyword").value = "";
+      document.getElementById("filterSqStatus").value = "ALL";
+      document.getElementById("filterOutstandingVendor").value = "ALL";
+      renderAllTabs();
+      showStatusBanner("Semua filter telah direset.", "info");
+    });
+
+    document.getElementById("btnRefresh").addEventListener("click", () => loadDashboardData(true));
+    document.getElementById("btnCloseStatus").addEventListener("click", () => {
+      document.getElementById("statusBox").classList.add("hidden");
+    });
+
+    document.getElementById("btnExportRfq").addEventListener("click", () => {
+      downloadCsv(state.lastDatasets.rfqActive, "Monitoring_RFQ_Aktif.csv");
+    });
+    document.getElementById("btnExportSq").addEventListener("click", () => {
+      const exportRows = state.lastDatasets.sqList.map(x => ({
+        "NO SQ": x.noSq,
+        "Status Masuk Order": x.masukOrder ? "Masuk Order" : "Belum Masuk Order",
+        "Jumlah Item RFQ": x.rfqItemCount,
+        "Kategori": [...x.kats].join(", "),
+        "Customer": [...x.custs].join(", "),
+        "Status RFQ": [...x.stats].join(", ")
+      }));
+      downloadCsv(exportRows, "Konversi_SQ_ke_Master_Order.csv");
+    });
+    document.getElementById("btnExportOutstanding").addEventListener("click", () => {
+      downloadCsv(state.lastDatasets.outstanding, "Outstanding_Supply_Vendor.csv");
+    });
+
+    // Initial Load
+    loadDashboardData(false);
+  </script>
+</body>
+</html>
