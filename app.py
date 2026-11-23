@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import altair as alt
 from datetime import datetime
 
@@ -34,7 +35,12 @@ BULAN_ID = {
 }
 
 def _fmt_tgl_indo(val):
-    if pd.isna(val):
+    if val is None or isinstance(val, (list, tuple, dict, set, np.ndarray, pd.Series, pd.Index)):
+        return val
+    try:
+        if pd.isna(val):
+            return val
+    except (ValueError, TypeError):
         return val
     if isinstance(val, str) and any(b in val for b in BULAN_ID.values()):
         return val.strip()
@@ -50,7 +56,9 @@ def format_date_columns(df):
     for col in df_out.columns:
         col_u = str(col).upper()
         if any(k in col_u for k in ['TGL', 'TANGGAL', 'DATE']):
-            df_out[col] = df_out[col].astype(object).apply(_fmt_tgl_indo)
+            target = df_out[col]
+            if isinstance(target, pd.Series):
+                df_out[col] = target.astype(object).apply(_fmt_tgl_indo)
     return df_out
 
 def _has_value(series):
@@ -81,7 +89,7 @@ def load_data(url, header_row=0):
         df = pd.read_csv(url, header=header_row)
         df.columns = df.columns.str.replace('\n', ' ').str.strip()
         return df
-    except Exception as e:
+    except Exception:
         return pd.DataFrame()
 
 # SIDEBAR NAVIGATION
@@ -182,7 +190,7 @@ if mode == "🏢 Central Procurement & Interco":
             df_komersial = df_order_filtered[mask_not_cancel_pending & (~mask_internal)].copy()
 
             # =========================================================
-            # BAGIAN 1: KOMERSIAL EKSTERNAL (PERMINTAAN -> SQ -> PO -> PROSES -> DITERIMA)
+            # BAGIAN 1: KOMERSIAL EKSTERNAL
             # =========================================================
             st.divider()
             st.write("### 📊 Ringkasan & Detail Transaksi Komersial Eksternal")
@@ -205,13 +213,10 @@ if mode == "🏢 Central Procurement & Interco":
 
             jadi_po_user = int(_has_value(df_komersial[po_cust_col]).sum()) if (not df_komersial.empty and po_cust_col) else len(df_komersial)
             if status_col and not df_komersial.empty:
-                sudah_diterima_ext = int(
-                    (
-                        (df_komersial[status_col].astype(str).str.upper().str.strip() == 'SUDAH DITERIMA')
-                        | _has_value(df_komersial['TGL CUST TERIMA']) if 'TGL CUST TERIMA' in df_komersial.columns else False
-                        | _has_value(df_komersial['TGL GRN']) if 'TGL GRN' in df_komersial.columns else False
-                    ).sum()
-                )
+                m_status_terima = df_komersial[status_col].astype(str).str.upper().str.strip() == 'SUDAH DITERIMA'
+                m_tgl_terima = _has_value(df_komersial['TGL CUST TERIMA']) if 'TGL CUST TERIMA' in df_komersial.columns else pd.Series(False, index=df_komersial.index)
+                m_tgl_grn = _has_value(df_komersial['TGL GRN']) if 'TGL GRN' in df_komersial.columns else pd.Series(False, index=df_komersial.index)
+                sudah_diterima_ext = int((m_status_terima | m_tgl_terima | m_tgl_grn).sum())
             else:
                 sudah_diterima_ext = 0
 
@@ -244,7 +249,6 @@ if mode == "🏢 Central Procurement & Interco":
 
             # =========================================================
             # BAGIAN 2: TRANSAKSI INTERNAL (SIBIMA & AMIN)
-            # Pantauan: Sudah diproses belum | Pembayaran diajukan belum | Sudah sampai belum
             # =========================================================
             st.divider()
             st.write("### 🏢 Ringkasan & Detail Transaksi Internal (SIBIMA & AMIN)")
@@ -252,7 +256,7 @@ if mode == "🏢 Central Procurement & Interco":
 
             if not df_internal_all.empty:
                 pr_col = next((c for c in df_internal_all.columns if 'NO PR' in str(c).upper()), None)
-                po_col = next((c for c in df_internal_all.columns if str(c).upper().strip() == 'NO PO' or 'NO PO' in str(c).upper() and 'CUSTOMER' not in str(c).upper()), None)
+                po_col = next((c for c in df_internal_all.columns if str(c).upper().strip() == 'NO PO' or ('NO PO' in str(c).upper() and 'CUSTOMER' not in str(c).upper())), None)
                 bpv_col = next((c for c in df_internal_all.columns if 'BPV' in str(c).upper()), None)
                 grn_col = next((c for c in df_internal_all.columns if 'GRN' in str(c).upper()), None)
                 do_col = next((c for c in df_internal_all.columns if str(c).upper().strip() == 'NO DO' or 'TGL DO' in str(c).upper()), None)
