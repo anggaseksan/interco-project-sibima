@@ -4,219 +4,35 @@ import numpy as np
 import altair as alt
 from datetime import datetime
 
-st.set_page_config(
-    page_title="SIBIMA Purchasing & Procurement Dashboard",
-    layout="wide",
-    page_icon="📊",
-    initial_sidebar_state="collapsed"
-)
+st.set_page_config(page_title="SIBIMA Performance Dashboard", layout="wide", page_icon="📈")
 
-# ==========================================
-# CUSTOM CSS: GAYA PURCHASING DASHBOARD MODERN
-# ==========================================
+# Tambahan CSS Global untuk Responsivitas & Mencegah Konten Terpotong di Berbagai Ukuran Layar
 st.markdown("""
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-
-        html, body, [class*="css"] {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background-color: #f4f7fb;
-            color: #1e293b;
-        }
-        .stApp {
-            background-color: #f4f7fb;
-        }
         .main .block-container {
-            padding-top: 1.4rem;
-            padding-bottom: 2.5rem;
             padding-left: 2rem;
             padding-right: 2rem;
             max-width: 100%;
         }
-        /* Top Header Bar */
-        .top-banner {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 14px;
-            padding: 18px 24px;
-            margin-bottom: 18px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 12px;
-            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
-        }
-        .banner-title {
-            font-size: 1.35rem;
-            font-weight: 800;
-            color: #0f172a;
-            margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .version-pill {
-            background: #e0edff;
-            color: #1d4ed8;
-            font-size: 0.72rem;
-            font-weight: 700;
-            padding: 3px 9px;
-            border-radius: 999px;
-        }
-        .banner-sub {
-            font-size: 0.82rem;
-            color: #64748b;
-            margin-top: 3px;
-        }
-        .sync-badge {
-            background: #f1f5f9;
-            border: 1px solid #e2e8f0;
-            color: #475569;
-            font-size: 0.78rem;
-            padding: 6px 12px;
-            border-radius: 10px;
-            text-align: right;
-        }
-        /* Section Header */
-        .sec-card-header {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 14px;
-            padding: 16px 20px;
-            margin-top: 10px;
-            margin-bottom: 14px;
-            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
-        }
-        .sec-title {
-            font-size: 1.05rem;
-            font-weight: 700;
-            color: #0f172a;
-            margin: 0;
-        }
-        .sec-desc {
-            font-size: 0.8rem;
-            color: #64748b;
-            margin-top: 2px;
-        }
-        /* Custom KPI Card */
-        .kpi-card {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 14px;
-            padding: 16px 18px;
-            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
-            height: 100%;
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
-        }
-        .kpi-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 14px rgba(15, 23, 42, 0.06);
-        }
-        .kpi-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        .kpi-label {
-            font-size: 0.78rem;
-            font-weight: 600;
-            color: #64748b;
-        }
-        .kpi-icon {
-            width: 30px;
-            height: 30px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.95rem;
-        }
-        .kpi-val {
-            font-size: 1.45rem;
-            font-weight: 800;
-            color: #0f172a;
-            line-height: 1.2;
+        [data-testid="stMetricValue"] {
+            font-size: clamp(1.2rem, 2.5vw, 1.8rem) !important;
             word-break: break-word;
         }
-        .kpi-sub {
-            font-size: 0.74rem;
-            color: #94a3b8;
-            margin-top: 5px;
-        }
-        /* Tabs Styling */
-        .stTabs [data-baseweb="tab-list"] {
-            gap: 8px;
-            background-color: #ffffff;
-            padding: 6px;
-            border-radius: 12px;
-            border: 1px solid #e2e8f0;
-        }
-        .stTabs [data-baseweb="tab"] {
-            border-radius: 8px;
-            padding: 8px 16px;
-            font-weight: 600;
-            font-size: 0.85rem;
-            color: #475569;
-        }
-        .stTabs [aria-selected="true"] {
-            background-color: #1d4ed8 !important;
-            color: #ffffff !important;
-        }
-        /* Dataframe Container */
         [data-testid="stDataFrame"] {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 6px;
+            width: 100% !important;
+            overflow-x: auto;
+        }
+        .stMultiSelect, .stSelectbox, .stDateInput {
             width: 100% !important;
         }
     </style>
 """, unsafe_allow_html=True)
 
-def render_kpi_card(label, value, sublabel, icon, bg_icon="#eff6ff", color_icon="#2563eb"):
-    return f"""
-    <div class="kpi-card">
-        <div class="kpi-top">
-            <span class="kpi-label">{label}</span>
-            <span class="kpi-icon" style="background:{bg_icon}; color:{color_icon};">{icon}</span>
-        </div>
-        <div class="kpi-val">{value}</div>
-        <div class="kpi-sub">{sublabel}</div>
-    </div>
-    """
-
-# ==========================================
-# HELPER FUNCTIONS (TANGGAL INDO & FILTER)
-# ==========================================
 BULAN_ID = {
     1: "Januari", 2: "Februari", 3: "Maret", 4: "April",
     5: "Mei", 6: "Juni", 7: "Juli", 8: "Agustus",
     9: "September", 10: "Oktober", 11: "November", 12: "Desember"
 }
-
-def make_unique_cols(cols):
-    seen = {}
-    out = []
-    for c in cols:
-        s = str(c).replace('\n', ' ').strip()
-        if not s:
-            s = "KOLOM"
-        if s in seen:
-            seen[s] += 1
-            out.append(f"{s} ({seen[s]})")
-        else:
-            seen[s] = 0
-            out.append(s)
-    return out
-
-def ensure_unique_cols(df):
-    if df is None or df.empty:
-        return df
-    out = df.copy()
-    out.columns = make_unique_cols(out.columns)
-    return out
 
 def _fmt_tgl_indo(val):
     if val is None or isinstance(val, (list, tuple, dict, set, np.ndarray, pd.Series, pd.Index)):
@@ -236,7 +52,7 @@ def _fmt_tgl_indo(val):
 def format_date_columns(df):
     if df is None or df.empty:
         return df
-    df_out = ensure_unique_cols(df)
+    df_out = df.copy()
     for col in df_out.columns:
         col_u = str(col).upper()
         if any(k in col_u for k in ['TGL', 'TANGGAL', 'DATE']):
@@ -266,60 +82,43 @@ def is_internal_row(row, kat_col=None, cust_col=None):
         or 'AGRO MINA' in cust
     )
 
-@st.cache_data(ttl=15)
+# Fungsi load data dengan cache dinamis
+@st.cache_data(ttl=10)
 def load_data(url, header_row=0):
     try:
         df = pd.read_csv(url, header=header_row)
-        df.columns = make_unique_cols(df.columns)
+        df.columns = df.columns.str.replace('\n', ' ').str.strip()
         return df
     except Exception:
         return pd.DataFrame()
 
-# ==========================================
 # SIDEBAR NAVIGATION
-# ==========================================
-st.sidebar.image("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSuPAMy4KN4jFEnYc3C6xHVWnXsylZ6c0wMrIkFSuRY3IphB8EOdoVf1gII&s=10", width=90)
-st.sidebar.title("Navigasi Procurement")
+st.sidebar.image("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSuPAMy4KN4jFEnYc3C6xHVWnXsylZ6c0wMrIkFSuRY3IphB8EOdoVf1gII&s=10", width=100)
+st.sidebar.title("Navigasi Central Procurement & Project")
 mode = st.sidebar.radio("Pilih Dashboard:", [
-    "🏢 Central Procurement & Interco",
+    "🏢 Central Procurement & Interco", 
     "🏗️ Project (YTP Tahap 2 & 3)"
 ])
 st.sidebar.divider()
-if st.sidebar.button("🔄 Refresh Data Live"):
-    st.cache_data.clear()
-    st.rerun()
+st.sidebar.caption("Data terhubung langsung ke Google Sheets (Live Sync).")
 
 # ==========================================
 # MODE 1: CENTRAL PROCUREMENT & INTERCO
 # ==========================================
 if mode == "🏢 Central Procurement & Interco":
+    st.title("SIBIMA Performance Dashboard - PROCUREMENT & INTERCO")
+    st.caption("Pusat monitoring RFQ, Konversi SQ ke PO, Analisis Transaksi, Analisis Vendor, dan Outstanding Supply.")
+
     URL_RFQ = "https://docs.google.com/spreadsheets/d/18isSUeBYGiM2xuhV8QsXP57_AOotJ07vu1dvd5i62GI/export?format=csv&gid=1100229590"
     URL_ORDER = "https://docs.google.com/spreadsheets/d/18isSUeBYGiM2xuhV8QsXP57_AOotJ07vu1dvd5i62GI/export?format=csv&gid=467075902"
 
     df_rfq = load_data(URL_RFQ, header_row=1)
     df_order = load_data(URL_ORDER, header_row=0)
 
-    now_str = datetime.now().strftime("%d/%m/%Y, %H:%M WIB")
-    st.markdown(f"""
-        <div class="top-banner">
-            <div>
-                <div class="banner-title">
-                    📊 Purchasing & Procurement Dashboard
-                    <span class="version-pill">v2.0 Live</span>
-                </div>
-                <div class="banner-sub">Div. Procurement & Interco • Data langsung dari Google Sheets (MASTER RFQ & MASTER ORDER)</div>
-            </div>
-            <div class="sync-badge">
-                <strong>Sinkronisasi Live:</strong> {now_str}<br/>
-                {len(df_rfq):,} baris RFQ • {len(df_order):,} baris Order
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
-
     tab_i1, tab_i2, tab_i3, tab_i4, tab_i5 = st.tabs([
-        "📊 Overview & Detail Transaksi",
-        "🔍 Monitoring RFQ (Pending & Kendala)",
-        "📈 Konversi SQ ke PO",
+        "📊 Overview & Detail Transaksi", 
+        "🔍 Monitoring RFQ (Pending & Kendala)", 
+        "📈 Konversi SQ ke PO", 
         "📋 Analisis Vendor",
         "🚚 Outstanding Supply Vendor"
     ])
@@ -338,36 +137,24 @@ if mode == "🏢 Central Procurement & Interco":
             kat_col_order = next((c for c in df_order.columns if 'KATEGORI' in str(c).upper()), None)
             cust_col_order = next((c for c in df_order.columns if 'CUSTOMER' in str(c).upper() and 'PIC' not in str(c).upper() and 'NO' not in str(c).upper() and 'TGL' not in str(c).upper()), None)
             status_col = next((c for c in df_order.columns if 'STATUS' in str(c).upper()), None)
-            vend_col_order = next((c for c in df_order.columns if 'VENDOR' in str(c).upper()), None)
 
-            list_cust_options = sorted(list(df_order[kat_col_order].dropna().unique())) if kat_col_order else []
-            list_status_options = sorted(list(df_order[status_col].dropna().unique())) if status_col else []
-            list_vendor_options = sorted(list(df_order[vend_col_order].dropna().unique())) if vend_col_order else []
+            list_cust_options = sorted(list(df_order[kat_col_order].dropna().unique())) if kat_col_order and not df_order[kat_col_order].dropna().empty else []
+            list_status_options = sorted(list(df_order[status_col].dropna().unique())) if status_col and not df_order[status_col].dropna().empty else []
 
-            # Bar Filter Horizontal
-            f1, f2, f3, f4, f5 = st.columns([1.2, 1.1, 1.2, 1.2, 1.3])
-            with f1:
-                date_range = st.date_input("📅 Kalender Aktif", [min_date, max_date], key="i_date")
-            with f2:
-                pilih_status = st.selectbox("🔽 Status Order", ["Semua"] + list_status_options, key="i_stat")
-            with f3:
-                pilih_cust = st.multiselect("🏢 Kategori / Customer", list_cust_options, placeholder="Semua Kategori", key="i_cust")
-            with f4:
-                pilih_vend = st.selectbox("🏭 Supplier / Vendor", ["Semua"] + list_vendor_options, key="i_vend")
-            with f5:
-                pilih_no = st.text_input("🔍 Cari No PO / SO / Item", placeholder="Ketik kata kunci...", key="i_no")
+            st.write("### Filter Dashboard Interco")
+            f_col1, f_col2, f_col3, f_col4 = st.columns(4)
+            with f_col1: date_range = st.date_input("Select Date Range 📅", [min_date, max_date], key="i_date")
+            with f_col2: pilih_status = st.selectbox("Cari Status 🔍", ["Semua"] + list_status_options, key="i_stat")
+            with f_col3: pilih_cust = st.multiselect("Pilih Customer (Kategori) 👤", list_cust_options, key="i_cust")
+            with f_col4: pilih_no = st.text_input("Cari Nomor Transaksi / Item 🔍", key="i_no")
 
             df_order_filtered = df_order.copy()
             if pilih_status != "Semua" and status_col:
                 df_order_filtered = df_order_filtered[df_order_filtered[status_col] == pilih_status]
             if pilih_cust and kat_col_order:
                 df_order_filtered = df_order_filtered[df_order_filtered[kat_col_order].isin(pilih_cust)]
-            if pilih_vend != "Semua" and vend_col_order:
-                df_order_filtered = df_order_filtered[df_order_filtered[vend_col_order] == pilih_vend]
             if pilih_no:
-                df_order_filtered = df_order_filtered[
-                    df_order_filtered.astype(str).apply(lambda x: x.str.contains(pilih_no, case=False, na=False)).any(axis=1)
-                ]
+                df_order_filtered = df_order_filtered[df_order_filtered.astype(str).apply(lambda x: x.str.contains(pilih_no, case=False, na=False)).any(axis=1)]
 
             def clean_price(val):
                 if pd.isna(val): return 0.0
@@ -405,26 +192,26 @@ if mode == "🏢 Central Procurement & Interco":
             # =========================================================
             # BAGIAN 1: KOMERSIAL EKSTERNAL
             # =========================================================
-            st.markdown("""
-                <div class="sec-card-header">
-                    <div class="sec-title">📦 Jalur Komersial Eksternal (Termasuk SIBIMATECH)</div>
-                    <div class="sec-desc">Siklus penuh: Permintaan (RFQ) → Sudah Terbit SQ → Jadi PO User / Order → Proses → Sudah Diterima</div>
-                </div>
-            """, unsafe_allow_html=True)
+            st.divider()
+            st.write("### 📊 Ringkasan & Detail Transaksi Komersial Eksternal")
+            st.caption("Alur pantauan: Permintaan (RFQ) → Sudah SQ → Jadi PO User / Order → Proses → Sudah Diterima.")
 
             kat_rfq_c = next((c for c in df_rfq.columns if 'KATEGORI' in str(c).upper()), None)
             cust_rfq_c = next((c for c in df_rfq.columns if 'CUSTOMER' in str(c).upper() and 'PIC' not in str(c).upper()), None)
             sq_rfq_c = next((c for c in df_rfq.columns if 'NO SQ' in str(c).upper()), None)
 
-            mask_rfq_int = df_rfq.apply(lambda r: is_internal_row(r, kat_rfq_c, cust_rfq_c), axis=1)
-            df_rfq_ext = df_rfq[~mask_rfq_int].copy()
-            if pilih_cust and kat_rfq_c:
-                df_rfq_ext = df_rfq_ext[df_rfq_ext[kat_rfq_c].isin(pilih_cust)]
+            if not df_rfq.empty:
+                mask_rfq_int = df_rfq.apply(lambda r: is_internal_row(r, kat_rfq_c, cust_rfq_c), axis=1)
+                df_rfq_ext = df_rfq[~mask_rfq_int].copy()
+                if pilih_cust and kat_rfq_c:
+                    df_rfq_ext = df_rfq_ext[df_rfq_ext[kat_rfq_c].isin(pilih_cust)]
+            else:
+                df_rfq_ext = pd.DataFrame()
 
             total_permintaan_rfq = len(df_rfq_ext)
             sudah_sq_rfq = int(_has_value(df_rfq_ext[sq_rfq_c]).sum()) if (not df_rfq_ext.empty and sq_rfq_c) else 0
-            jadi_po_user = int(_has_value(df_komersial[po_cust_col]).sum()) if (not df_komersial.empty and po_cust_col) else len(df_komersial)
 
+            jadi_po_user = int(_has_value(df_komersial[po_cust_col]).sum()) if (not df_komersial.empty and po_cust_col) else len(df_komersial)
             if status_col and not df_komersial.empty:
                 m_status_terima = df_komersial[status_col].astype(str).str.upper().str.strip() == 'SUDAH DITERIMA'
                 m_tgl_terima = _has_value(df_komersial['TGL CUST TERIMA']) if 'TGL CUST TERIMA' in df_komersial.columns else pd.Series(False, index=df_komersial.index)
@@ -436,46 +223,36 @@ if mode == "🏢 Central Procurement & Interco":
             total_revenue_exc = df_komersial['PRICE_CLEAN'].sum()
             total_revenue_inc = total_revenue_exc * 1.11
             total_hpp_exc = df_komersial['HPP_CLEAN'].sum()
-            total_margin_exc = total_revenue_exc - total_hpp_exc
-            margin_pct = (total_margin_exc / total_revenue_exc * 100) if total_revenue_exc > 0 else 0
             total_transaksi_unik = df_komersial[po_cust_col].nunique() if (po_cust_col and not df_komersial[po_cust_col].dropna().empty) else len(df_komersial)
 
-            c1, c2, c3, c4 = st.columns(4)
-            c1.markdown(render_kpi_card("Permintaan RFQ Eksternal", f"{total_permintaan_rfq:,}", "Item masuk dari customer", "📩", "#eff6ff", "#2563eb"), unsafe_allow_html=True)
-            c2.markdown(render_kpi_card("Sudah Terbit SQ", f"{sudah_sq_rfq:,}", "RFQ memiliki nomor SQ", "📄", "#f5f3ff", "#7c3aed"), unsafe_allow_html=True)
-            c3.markdown(render_kpi_card("Jadi PO User / Order", f"{jadi_po_user:,}", f"{total_transaksi_unik} PO Customer unik", "🛒", "#ecfeff", "#0891b2"), unsafe_allow_html=True)
-            c4.markdown(render_kpi_card("Sudah Diterima", f"{sudah_diterima_ext:,}", "Terkirim & diterima user", "✅", "#ecfdf5", "#059669"), unsafe_allow_html=True)
+            k1, k2, k3, k4 = st.columns(4)
+            k1.metric("Permintaan RFQ Eksternal", total_permintaan_rfq)
+            k2.metric("Sudah Terbit SQ (RFQ)", sudah_sq_rfq)
+            k3.metric("Jadi PO User (Order Aktif)", jadi_po_user)
+            k4.metric("Sudah Diterima (Order)", sudah_diterima_ext)
 
-            st.write("")
-            c5, c6, c7, c8 = st.columns(4)
-            c5.markdown(render_kpi_card("Total Pembelian (HPP)", f"Rp {total_hpp_exc:,.0f}".replace(',', '.'), "Exclude PPN", "🏷️", "#fefce8", "#ca8a04"), unsafe_allow_html=True)
-            c6.markdown(render_kpi_card("Penjualan (Exclude PPN)", f"Rp {total_revenue_exc:,.0f}".replace(',', '.'), "Nilai jual bersih", "💰", "#eff6ff", "#1d4ed8"), unsafe_allow_html=True)
-            c7.markdown(render_kpi_card("Penjualan (Include PPN)", f"Rp {total_revenue_inc:,.0f}".replace(',', '.'), "Termasuk PPN 11%", "🧾", "#f0fdf4", "#15803d"), unsafe_allow_html=True)
-            c8.markdown(render_kpi_card("Estimasi Margin", f"Rp {total_margin_exc:,.0f}".replace(',', '.'), f"{margin_pct:.1f}% dari penjualan", "📈", "#fdf2f8", "#db2777"), unsafe_allow_html=True)
+            k5, k6, k7, k8 = st.columns(4)
+            k5.metric("Total Transaksi Unik (PO Cust)", total_transaksi_unik)
+            k6.metric("Penjualan (Exclude PPN)", f"Rp {total_revenue_exc:,.0f}".replace(',', '.'))
+            k7.metric("Penjualan (Include PPN)", f"Rp {total_revenue_inc:,.0f}".replace(',', '.'))
+            k8.metric("HPP (Exclude PPN)", f"Rp {total_hpp_exc:,.0f}".replace(',', '.'))
 
-            st.write("")
-            st.markdown("**📑 Tabel Detail Item / Transaksi Komersial Eksternal**")
-            ext_priority_cols = []
-            for c in [
+            st.write("#### 📑 Tabel Detail Item / Transaksi Komersial Eksternal")
+            ext_priority_cols = [c for c in [
                 kat_col_order, cust_col_order, po_cust_col, 'TGL PO CUSTOMER',
                 sq_order_col, 'TGL SQ', 'NO SO', 'NO PO', 'ITEM', qty_col,
                 price_col, hpp_col, status_col, 'TGL ESTIMASI SAMPAI', 'TGL GRN', 'TGL DO', 'TGL CUST TERIMA'
-            ]:
-                if c and c in df_komersial.columns and c not in ext_priority_cols:
-                    ext_priority_cols.append(c)
+            ] if c and c in df_komersial.columns]
             ext_rest_cols = [c for c in df_komersial.columns if c not in ext_priority_cols and not str(c).endswith('_CLEAN')]
-            df_komersial_view = ensure_unique_cols(df_komersial[ext_priority_cols + ext_rest_cols]) if not df_komersial.empty else df_komersial
+            df_komersial_view = df_komersial[ext_priority_cols + ext_rest_cols] if not df_komersial.empty else df_komersial
             st.dataframe(format_date_columns(df_komersial_view), use_container_width=True, height=340)
 
             # =========================================================
             # BAGIAN 2: TRANSAKSI INTERNAL (SIBIMA & AMIN)
             # =========================================================
-            st.markdown("""
-                <div class="sec-card-header" style="margin-top:24px;">
-                    <div class="sec-title">🏢 Jalur Operasional Internal (SIBIMA & AMIN)</div>
-                    <div class="sec-desc">Pantauan operasional internal: Sudah diproses belum • Pembayaran sudah diajukan belum (BPV) • Sudah sampai belum</div>
-                </div>
-            """, unsafe_allow_html=True)
+            st.divider()
+            st.write("### 🏢 Ringkasan & Detail Transaksi Internal (SIBIMA & AMIN)")
+            st.caption("Pantauan khusus internal: sudah diproses belum, sudah diajukan pembayarannya belum (BPV), dan apakah sudah sampai.")
 
             if not df_internal_all.empty:
                 pr_col = next((c for c in df_internal_all.columns if 'NO PR' in str(c).upper()), None)
@@ -496,41 +273,33 @@ if mode == "🏢 Central Procurement & Interco":
                 sudah_diproses = has_pr | has_po | has_bpv | has_sampai
 
                 ic1, ic2, ic3, ic4 = st.columns(4)
-                ic1.markdown(render_kpi_card("Total Item Internal", f"{len(df_internal_all):,}", "SIBIMA & AMIN", "📋", "#f1f5f9", "#334155"), unsafe_allow_html=True)
-                ic2.markdown(render_kpi_card("Sudah Diproses", f"{int(sudah_diproses.sum()):,}", f"Belum: {int((~sudah_diproses).sum())} item", "⚙️", "#eff6ff", "#2563eb"), unsafe_allow_html=True)
-                ic3.markdown(render_kpi_card("Pembayaran Diajukan", f"{int(has_bpv.sum()):,}", f"Belum BPV: {int((~has_bpv).sum())} item", "💳", "#fefce8", "#ca8a04"), unsafe_allow_html=True)
-                ic4.markdown(render_kpi_card("Sudah Sampai", f"{int(has_sampai.sum()):,}", f"Belum sampai: {int((~has_sampai).sum())} item", "📦", "#ecfdf5", "#059669"), unsafe_allow_html=True)
+                ic1.metric("Total Item Internal", len(df_internal_all))
+                ic2.metric("Sudah Diproses", int(sudah_diproses.sum()))
+                ic3.metric("Pembayaran Diajukan (BPV)", int(has_bpv.sum()))
+                ic4.metric("Sudah Sampai", int(has_sampai.sum()))
 
-                st.write("")
                 df_internal_disp = df_internal_all.copy()
-                df_internal_disp.insert(0, "Status Sampai", has_sampai.map({True: "✅ Sudah Sampai", False: "⏳ Belum Sampai"}))
-                df_internal_disp.insert(0, "Pembayaran (BPV)", has_bpv.map({True: "✅ Sudah Diajukan", False: "⏳ Belum Diajukan"}))
-                df_internal_disp.insert(0, "Status Proses", sudah_diproses.map({True: "✅ Sudah Diproses", False: "⏳ Belum Diproses"}))
+                df_internal_disp.insert(0, "Status Sampai", has_sampai.map({True: "Sudah Sampai", False: "Belum Sampai"}))
+                df_internal_disp.insert(0, "Pembayaran (BPV)", has_bpv.map({True: "Sudah Diajukan", False: "Belum Diajukan"}))
+                df_internal_disp.insert(0, "Status Proses", sudah_diproses.map({True: "Sudah Diproses", False: "Belum Diproses"}))
 
-                int_priority = []
-                for c in [
+                int_priority = [c for c in [
                     "Status Proses", "Pembayaran (BPV)", "Status Sampai",
                     kat_col_order, cust_col_order, 'ITEM', qty_col, status_col,
                     pr_col, 'TGL PR', po_col, 'TGL PO', bpv_col, 'TGL BPV',
                     'TGL ESTIMASI SAMPAI', grn_col, 'TGL GRN', do_col, terima_col
-                ]:
-                    if c and c in df_internal_disp.columns and c not in int_priority:
-                        int_priority.append(c)
+                ] if c and c in df_internal_disp.columns]
                 int_rest = [c for c in df_internal_disp.columns if c not in int_priority and not str(c).endswith('_CLEAN')]
 
-                st.markdown("**📑 Tabel Detail Item / Transaksi Internal (SIBIMA & AMIN)**")
-                st.dataframe(format_date_columns(ensure_unique_cols(df_internal_disp[int_priority + int_rest])), use_container_width=True, height=340)
+                st.write("#### 📑 Tabel Detail Item / Transaksi Internal (SIBIMA & AMIN)")
+                st.dataframe(format_date_columns(df_internal_disp[int_priority + int_rest]), use_container_width=True, height=340)
             else:
                 st.info("Tidak ada data transaksi internal (SIBIMA & AMIN) pada filter saat ini.")
 
     # --- TAB 2: MONITORING RFQ (PENDING & KENDALA) ---
     with tab_i2:
-        st.markdown("""
-            <div class="sec-card-header">
-                <div class="sec-title">🔍 Monitoring RFQ: Belum Dikerjakan & Kendala</div>
-                <div class="sec-desc">Melacak antrean RFQ aktif di luar COMPLETE/CANCEL, serta memisahkan item PENDING dengan kendala HOLD untuk follow-up hingga CLOSE.</div>
-            </div>
-        """, unsafe_allow_html=True)
+        st.write("### 🔍 Monitoring RFQ: Belum Dikerjakan & Kendala")
+        st.markdown("Menganalisis data dari `MASTER RFQ` untuk melacak RFQ yang statusnya belum selesai, tertunda, atau memiliki kendala operasional.")
 
         if not df_rfq.empty:
             stat_rfq_col = next((c for c in df_rfq.columns if 'STATUS' in str(c).upper()), None)
@@ -547,7 +316,9 @@ if mode == "🏢 Central Procurement & Interco":
             def is_pending_hold_followup(row):
                 status_val = str(row[stat_rfq_col]).upper().strip() if (stat_rfq_col and pd.notna(row[stat_rfq_col])) else ""
                 kendala_val = str(row[kendala_col]).upper().strip() if (kendala_col and pd.notna(row[kendala_col])) else ""
-                return ('PENDING' in status_val and 'HOLD' in kendala_val and 'CLOSE' not in status_val)
+                if 'PENDING' in status_val and 'HOLD' in kendala_val and 'CLOSE' not in status_val:
+                    return True
+                return False
 
             def is_pending_rfq(row):
                 if is_pending_hold_followup(row):
@@ -558,37 +329,48 @@ if mode == "🏢 Central Procurement & Interco":
                         return False
                 return True
 
-            df_rfq_pending = reorder_kendala_first(df_rfq[df_rfq.apply(is_pending_rfq, axis=1)].copy()) if stat_rfq_col else df_rfq.copy()
-            df_rfq_hold_followup = reorder_kendala_first(df_rfq[df_rfq.apply(is_pending_hold_followup, axis=1)].copy()) if stat_rfq_col else pd.DataFrame(columns=df_rfq.columns)
+            df_rfq_pending = df_rfq[df_rfq.apply(is_pending_rfq, axis=1)].copy() if stat_rfq_col else df_rfq.copy()
+            df_rfq_hold_followup = df_rfq[df_rfq.apply(is_pending_hold_followup, axis=1)].copy() if stat_rfq_col else pd.DataFrame(columns=df_rfq.columns)
 
-            r1, r2, r3 = st.columns(3)
-            r1.markdown(render_kpi_card("Total RFQ Masuk", f"{len(df_rfq):,}", "Seluruh baris MASTER RFQ", "📥", "#eff6ff", "#2563eb"), unsafe_allow_html=True)
-            r2.markdown(render_kpi_card("RFQ Belum Selesai", f"{len(df_rfq_pending):,}", "Antrean aktif perlu diproses", "🔥", "#fef2f2", "#dc2626"), unsafe_allow_html=True)
-            r3.markdown(render_kpi_card("RFQ Di-hold (Follow-up)", f"{len(df_rfq_hold_followup):,}", "Dipantau sampai CLOSE", "⏸️", "#fefce8", "#ca8a04"), unsafe_allow_html=True)
+            df_rfq_pending = reorder_kendala_first(df_rfq_pending)
+            df_rfq_hold_followup = reorder_kendala_first(df_rfq_hold_followup)
 
-            st.write("")
-            st.markdown("**📋 Daftar RFQ Belum Selesai & Kendala**")
+            m_rfq1, m_rfq2, m_rfq3 = st.columns(3)
+            m_rfq1.metric("Total RFQ Masuk", len(df_rfq))
+            m_rfq2.metric("RFQ Belum Selesai / Pending", len(df_rfq_pending))
+            m_rfq3.metric("RFQ Di-hold (Follow-up s/d Close)", len(df_rfq_hold_followup))
+
+            st.divider()
+            st.write("#### 📋 Daftar RFQ Belum Selesai & Kendala")
             st.dataframe(format_date_columns(df_rfq_pending), use_container_width=True, height=400)
 
             csv_rfq_pending = format_date_columns(df_rfq_pending).to_csv(index=False).encode('utf-8')
-            st.download_button("📥 Download Laporan RFQ Pending (CSV)", data=csv_rfq_pending, file_name="RFQ_Pending_Kendala.csv", mime="text/csv")
+            st.download_button(
+                label="📥 Download Laporan RFQ Pending (CSV)",
+                data=csv_rfq_pending,
+                file_name="RFQ_Pending_Kendala.csv",
+                mime="text/csv"
+            )
 
             if not df_rfq_hold_followup.empty:
+                st.divider()
                 with st.expander("📌 Daftar RFQ Di-hold (Sementara Selesai — Perlu Follow-up sampai CLOSE)"):
                     st.dataframe(format_date_columns(df_rfq_hold_followup), use_container_width=True, height=300)
                     csv_rfq_hold = format_date_columns(df_rfq_hold_followup).to_csv(index=False).encode('utf-8')
-                    st.download_button("📥 Download Laporan RFQ Di-hold (CSV)", data=csv_rfq_hold, file_name="RFQ_Hold_FollowUp.csv", mime="text/csv", key="dl_rfq_hold")
+                    st.download_button(
+                        label="📥 Download Laporan RFQ Di-hold / Follow-up (CSV)",
+                        data=csv_rfq_hold,
+                        file_name="RFQ_Hold_FollowUp.csv",
+                        mime="text/csv",
+                        key="dl_rfq_hold"
+                    )
         else:
             st.warning("Data Master RFQ kosong.")
 
     # --- TAB 3: KONVERSI SQ KE PO ---
     with tab_i3:
-        st.markdown("""
-            <div class="sec-card-header">
-                <div class="sec-title">📈 Analisis Konversi NO SQ (MASTER RFQ → MASTER ORDER)</div>
-                <div class="sec-desc">Memeriksa setiap nomor SQ unik yang terbit di MASTER RFQ apakah sudah tercatat masuk ke MASTER ORDER.</div>
-            </div>
-        """, unsafe_allow_html=True)
+        st.write("### 📈 Analisis Konversi SQ (Quotation) ke PO (Order)")
+        st.markdown("Mengecek setiap **NO SQ** yang ada di `MASTER RFQ` apakah sudah masuk ke `MASTER ORDER`.")
 
         sq_rfq_col = next((c for c in df_rfq.columns if 'NO SQ' in str(c).upper() or str(c).upper().strip() == 'SQ'), None)
         sq_order_col = next((c for c in df_order.columns if 'NO SQ' in str(c).upper() or str(c).upper().strip() == 'SQ'), None)
@@ -610,13 +392,14 @@ if mode == "🏢 Central Procurement & Interco":
             belum_masuk_count = len(unmatched_sq_list)
             conversion_rate = (masuk_order_count / total_sq_rfq * 100) if total_sq_rfq > 0 else 0
 
-            s1, s2, s3, s4 = st.columns(4)
-            s1.markdown(render_kpi_card("Total NO SQ Unik", f"{total_sq_rfq:,}", "Tercatat di MASTER RFQ", "📄", "#eff6ff", "#2563eb"), unsafe_allow_html=True)
-            s2.markdown(render_kpi_card("Masuk Master Order", f"{masuk_order_count:,}", "Sudah konversi ke PO/Order", "✅", "#ecfdf5", "#059669"), unsafe_allow_html=True)
-            s3.markdown(render_kpi_card("Belum Masuk Order", f"{belum_masuk_count:,}", "Belum ditemukan di Order", "⏳", "#fef2f2", "#dc2626"), unsafe_allow_html=True)
-            s4.markdown(render_kpi_card("Conversion Rate SQ", f"{conversion_rate:.2f}%", "Rasio SQ tembus Order", "🎯", "#f5f3ff", "#7c3aed"), unsafe_allow_html=True)
+            kc1, kc2, kc3, kc4 = st.columns(4)
+            kc1.metric("Total NO SQ Unik (Master RFQ)", total_sq_rfq)
+            kc2.metric("SQ Masuk Master Order", masuk_order_count)
+            kc3.metric("SQ Belum Masuk Order", belum_masuk_count)
+            kc4.metric("Conversion Rate SQ -> Order", f"{conversion_rate:.2f}%")
 
-            st.write("")
+            st.divider()
+
             kat_rfq_c = next((c for c in df_rfq.columns if 'KATEGORI' in str(c).upper()), None)
             cust_rfq_c = next((c for c in df_rfq.columns if 'CUSTOMER' in str(c).upper()), None)
             stat_rfq_c = next((c for c in df_rfq.columns if 'STATUS' in str(c).upper()), None)
@@ -631,7 +414,7 @@ if mode == "🏢 Central Procurement & Interco":
                 is_in_order = sq_val in order_sq_set
                 sq_rows.append({
                     "NO SQ": sq_val,
-                    "Status Masuk Order": "✅ Masuk Order" if is_in_order else "⏳ Belum Masuk Order",
+                    "Status Masuk Order": "Masuk Order" if is_in_order else "Belum Masuk Order",
                     "Jumlah Item RFQ": len(sub),
                     "Kategori": ", ".join(sorted(set(sub[kat_rfq_c].dropna().astype(str)))) if kat_rfq_c else "-",
                     "Customer": ", ".join(sorted(set(sub[cust_rfq_c].dropna().astype(str)))) if cust_rfq_c else "-",
@@ -639,72 +422,87 @@ if mode == "🏢 Central Procurement & Interco":
                 })
 
             df_sq_track = pd.DataFrame(sq_rows)
-            filter_sq_status = st.selectbox("🔍 Filter Status SQ pada Master Order:", ["Semua", "✅ Masuk Order", "⏳ Belum Masuk Order"], key="sq_track_filter")
+            filter_sq_status = st.selectbox("🔍 Filter Status SQ pada Master Order:", ["Semua", "Masuk Order", "Belum Masuk Order"], key="sq_track_filter")
             df_sq_track_view = df_sq_track[df_sq_track["Status Masuk Order"] == filter_sq_status] if filter_sq_status != "Semua" else df_sq_track
 
+            st.write("#### 📑 Daftar Pelacakan NO SQ dari Master RFQ ke Master Order")
             st.dataframe(df_sq_track_view, use_container_width=True, height=380)
+
             csv_sq_track = df_sq_track_view.to_csv(index=False).encode('utf-8')
-            st.download_button("📥 Download Laporan Tracking SQ ke Order (CSV)", data=csv_sq_track, file_name="Tracking_SQ_ke_Master_Order.csv", mime="text/csv")
+            st.download_button(
+                label="📥 Download Laporan Tracking SQ ke Order (CSV)",
+                data=csv_sq_track,
+                file_name="Tracking_SQ_ke_Master_Order.csv",
+                mime="text/csv"
+            )
         else:
             st.warning("Data RFQ atau Order kosong, atau kolom NO SQ tidak ditemukan.")
 
     # --- TAB 4: ANALISIS VENDOR ---
     with tab_i4:
-        st.markdown("""
-            <div class="sec-card-header">
-                <div class="sec-title">📋 Analisis Performa & Transaksi Vendor</div>
-                <div class="sec-desc">Sebaran volume item transaksi berdasarkan nama vendor pada MASTER ORDER.</div>
-            </div>
-        """, unsafe_allow_html=True)
+        st.write("### 📋 Analisis Performa & Transaksi Vendor")
+        st.markdown("Menampilkan rincian volume transaksi dan sebaran vendor yang menangani pesanan di interco.")
 
         if not df_order.empty:
             vend_c = next((c for c in df_order.columns if 'VENDOR' in str(c).upper()), None)
             if vend_c:
                 vendor_counts = df_order[vend_c].value_counts().reset_index()
                 vendor_counts.columns = ['Vendor', 'Total Transaksi']
-                st.markdown(render_kpi_card("Total Vendor Aktif", f"{len(vendor_counts):,}", "Vendor terdaftar pada transaksi order", "🏭", "#eff6ff", "#2563eb"), unsafe_allow_html=True)
-                st.write("")
-                bar_chart_full = alt.Chart(vendor_counts.head(20)).mark_bar(cornerRadiusEnd=6, color="#2563eb").encode(
-                    x=alt.X('Total Transaksi:Q', title='Jumlah Item Order'),
+
+                st.metric("Total Vendor Aktif", len(vendor_counts))
+                st.divider()
+
+                bar_chart_full = alt.Chart(vendor_counts).mark_bar().encode(
+                    x=alt.X('Total Transaksi:Q', title='Jumlah Transaksi'),
                     y=alt.Y('Vendor:N', sort='-x', title='Nama Vendor'),
+                    color=alt.Color('Vendor:N', legend=None),
                     tooltip=['Vendor', 'Total Transaksi']
-                ).properties(height=460)
+                ).properties(height=500)
                 st.altair_chart(bar_chart_full, use_container_width=True)
-                st.dataframe(vendor_counts, use_container_width=True, height=340)
+
+                st.write("#### 📑 Tabel Rekapitulasi Transaksi per Vendor")
+                st.dataframe(vendor_counts, use_container_width=True, height=350)
             else:
                 st.warning("Kolom Vendor tidak ditemukan pada Master Order.")
+        else:
+            st.warning("Data Master Order kosong.")
 
-    # --- TAB 5: OUTSTANDING SUPPLY VENDOR ---
+    # --- TAB 5: OUTSTANDING SUPPLY VENDOR (INTERCO) ---
     with tab_i5:
-        st.markdown("""
-            <div class="sec-card-header">
-                <div class="sec-title">🚚 Monitoring Outstanding Supply Vendor</div>
-                <div class="sec-desc">Daftar item order yang statusnya belum Sudah Diterima dan bukan Cancel.</div>
-            </div>
-        """, unsafe_allow_html=True)
+        st.write("### 🚚 Monitoring Outstanding Supply Vendor (Interco)")
+        st.markdown("Menampilkan daftar transaksi order interco yang barangnya atau pengirimannya masih *outstanding* (belum diterima).")
 
         if not df_order.empty:
             status_col = next((c for c in df_order.columns if 'STATUS' in str(c).upper()), None)
             if status_col:
-                df_interco_out = df_order[~df_order[status_col].astype(str).str.upper().str.strip().isin(['SUDAH DITERIMA', 'CANCEL'])].copy()
+                df_interco_out = df_order[
+                    (~df_order[status_col].astype(str).str.upper().str.strip().isin(['SUDAH DITERIMA', 'CANCEL']))
+                ].copy()
             else:
                 df_interco_out = df_order.copy()
 
             vend_col_in = next((c for c in df_interco_out.columns if 'VENDOR' in str(c).upper()), None)
             list_v_in = ["Semua Vendor"] + sorted([str(x) for x in df_interco_out[vend_col_in].dropna().unique()]) if vend_col_in else ["Semua Vendor"]
-            pilih_v_in = st.selectbox("🔍 Filter Berdasarkan Vendor:", list_v_in)
+            pilih_v_in = st.selectbox("🔍 Filter Berdasarkan Vendor Interco:", list_v_in)
 
             if pilih_v_in != "Semua Vendor" and vend_col_in:
                 df_interco_out = df_interco_out[df_interco_out[vend_col_in].astype(str) == pilih_v_in]
 
-            st.markdown(render_kpi_card("Total Item Outstanding", f"{len(df_interco_out):,}", "Menunggu pengiriman / penerimaan", "🚚", "#fefce8", "#ca8a04"), unsafe_allow_html=True)
-            st.write("")
+            st.metric("Total Transaksi Interco Outstanding", len(df_interco_out))
             st.dataframe(format_date_columns(df_interco_out), use_container_width=True, height=450)
+
             csv_in_out = format_date_columns(df_interco_out).to_csv(index=False).encode('utf-8')
-            st.download_button("📥 Download Laporan Outstanding (CSV)", data=csv_in_out, file_name="Outstanding_Interco_Vendor.csv", mime="text/csv")
+            st.download_button(
+                label="📥 Download Laporan Outstanding Interco (CSV)",
+                data=csv_in_out,
+                file_name="Outstanding_Interco_Vendor.csv",
+                mime="text/csv"
+            )
+        else:
+            st.warning("Data Master Order kosong.")
 
 # ==========================================
-# MODE 2: PROJECT YTP (DI-HOLD SEMENTARA)
+# MODE 2: PROJECT YTP (Tahap 2 & 3) [DI-HOLD SEMENTARA]
 # ==========================================
 elif mode == "🏗️ Project (YTP Tahap 2 & 3)":
     st.title("🏗️ DASHBOARD ANALITIK PROJECT (YTP)")
