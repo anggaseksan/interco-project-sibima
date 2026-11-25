@@ -107,7 +107,7 @@
         </div>
 
         <div>
-          <label for="filterKategori" class="block text-[11px] font-semibold text-slate-500 mb-1">Kategori</label>
+          <label for="filterKategori" class="block text-[11px] font-semibold text-slate-500 mb-1">Kategori Barang</label>
           <select id="filterKategori" class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="ALL">(Semua)</option>
           </select>
@@ -121,18 +121,18 @@
         </div>
 
         <div>
-          <label for="filterStatusPo" class="block text-[11px] font-semibold text-slate-500 mb-1">Status PO</label>
+          <label for="filterStatusPo" class="block text-[11px] font-semibold text-slate-500 mb-1">Status PO / Pengiriman</label>
           <select id="filterStatusPo" class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="ALL">(Semua)</option>
-            <option value="COMPLETE">Complete</option>
-            <option value="PARTIAL">Partial</option>
-            <option value="OPEN">Open</option>
+            <option value="COMPLETE">Complete / Sudah Diterima</option>
+            <option value="PARTIAL">Partial / Dalam Pengiriman</option>
+            <option value="OPEN">Open / Proses</option>
           </select>
         </div>
 
         <div>
           <label for="filterKeyword" class="block text-[11px] font-semibold text-slate-500 mb-1">Pencarian Kata Kunci</label>
-          <input id="filterKeyword" type="text" placeholder="Cari PO, SQ, PR, BPV, Customer, Item..." class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <input id="filterKeyword" type="text" placeholder="Cari PO, SO, SQ, PR, Customer, Item..." class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
 
         <div class="flex items-end">
@@ -345,8 +345,8 @@
       <div class="card-surface p-4 sm:p-5 lg:col-span-6 flex flex-col justify-between">
         <div class="flex items-start justify-between gap-2 mb-3">
           <div>
-            <h2 class="text-base sm:text-lg font-bold text-slate-900">HPP & Margin per Kategori (Komersial)</h2>
-            <p class="text-xs text-slate-500">Nominal HPP Exclude PPN dan margin tiap kategori komersial</p>
+            <h2 class="text-base sm:text-lg font-bold text-slate-900">HPP & Margin per Kategori Barang (Komersial)</h2>
+            <p class="text-xs text-slate-500">Nominal HPP Exclude PPN dan margin tiap kategori barang komersial</p>
           </div>
           <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-100 shrink-0">
             ● Category
@@ -356,7 +356,7 @@
         <div id="kategoriBarList" class="space-y-3.5 my-auto py-1"></div>
 
         <div class="mt-3 pt-2 border-t border-slate-100 flex justify-between text-[11px] text-slate-400">
-          <span>Kontribusi HPP komersial per kategori</span>
+          <span>Kontribusi HPP komersial per kategori barang</span>
           <span id="kategoriTotalLabel" class="font-semibold text-slate-600">Rp 0</span>
         </div>
       </div>
@@ -367,7 +367,7 @@
       <div class="flex items-start justify-between gap-2">
         <div>
           <h2 class="text-base sm:text-lg font-bold text-slate-900">Outstanding Berdasarkan Status BPV (Komersial)</h2>
-          <p class="text-xs text-slate-500">Pembagian Nilai Sisa HPP Exclude PPN berdasarkan status BPV / pembayaran</p>
+          <p class="text-xs text-slate-500">Pembagian Nilai Sisa HPP Exclude PPN berdasarkan kolom STATUS BPV</p>
         </div>
         <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-100 shrink-0">
           ● BPV Status
@@ -474,19 +474,12 @@
     const INTERNAL_KEYWORDS = ["GA SIBIMA", "AMIN", "GA AMIIN", "GA AMIN", "INTERNAL"];
 
     const SAMPLE_RFQ_ROWS = [
-      { "TGL RFQ": "2026-07-09", "KATEGORI": "PROYEK", "CUSTOMER": "PT. ASRI KARYA LESTARI", "ITEM": "UPS Rackmount 3000VA", "QTY": 2, "STATUS": "COMPLETE", "NO SQ": "SIBSQ26070001" },
-      { "TGL RFQ": "2026-08-14", "KATEGORI": "FULL PAYMENT", "CUSTOMER": "PT. SIBIMA TEKNOLOGI NUSANTARA", "ITEM": "Server Blade Node Gen11", "QTY": 1, "STATUS": "COMPLETE", "NO SQ": "SIBSQ26080002" },
-      { "TGL RFQ": "2026-09-21", "KATEGORI": "KONSINYASI", "CUSTOMER": "PT. OCEAN LINK RESOURCES", "ITEM": "Switch Managed 48-Port SFP+", "QTY": 3, "STATUS": "PENDING", "NO SQ": "SIBSQ26090003" }
+      { "TANGGAL RFQ": "2026-07-09", "KATEGORI": "PROYEK", "KATEGORI (1)": "ELEKTRONIK", "CUSTOMER": "PT. ASRI KARYA LESTARI", "ITEM PERMINTAAN": "UPS Rackmount 3000VA", "QTY": 2, "STATUS": "COMPLETE", "NO SQ": "SIBSQ26070001" }
     ];
 
     const SAMPLE_ORDER_ROWS = [
-      { "TGL PO": "2026-06-15", "KATEGORI": "PROYEK", "CUSTOMER": "PT. ASRI KARYA LESTARI", "NO PR": "PR-2606-01", "NO PO": "PO-2606-01", "NO SQ": "SIBSQ26060001", "NO BPV": "BPV-01", "STATUS BPV": "Sudah Bayar Lunas", "ITEM": "Panel Distribusi Utama", "QTY": 2, "VENDOR": "PT DAYA SENTOSA UTAMA", "HPP EXCLUDE PPN": 42000000, "PENJUALAN EXCLUDE PPN": 49500000, "STATUS": "SUDAH DITERIMA" },
-      { "TGL PO": "2026-07-09", "KATEGORI": "FULL PAYMENT", "CUSTOMER": "PT. SIBIMA TEKNOLOGI NUSANTARA", "NO PR": "PR-2607-02", "NO PO": "PO-2607-02", "NO SQ": "SIBSQ26070001", "NO BPV": "BPV-02", "STATUS BPV": "Sudah Bayar Lunas", "ITEM": "UPS Rackmount 3000VA", "QTY": 2, "VENDOR": "PT SOLUSI SERVER INDONESIA", "HPP EXCLUDE PPN": 36500000, "PENJUALAN EXCLUDE PPN": 43800000, "STATUS": "SUDAH DITERIMA" },
-      { "TGL PO": "2026-08-18", "KATEGORI": "KONSINYASI", "CUSTOMER": "PT. OCEAN LINK RESOURCES", "NO PR": "PR-2608-03", "NO PO": "PO-2608-03", "NO SQ": "SIBSQ26080002", "NO BPV": "BPV-03", "STATUS BPV": "Hutang", "ITEM": "Switch Managed 48-Port SFP+", "QTY": 3, "VENDOR": "PT MITRA JARINGAN PRIMA", "HPP EXCLUDE PPN": 54000000, "PENJUALAN EXCLUDE PPN": 63500000, "STATUS": "DALAM PENGIRIMAN" },
-      { "TGL PO": "2026-09-22", "KATEGORI": "REGULER", "CUSTOMER": "PT. SIBIMA KARYA MANDIRI", "NO PR": "PR-2609-04", "NO PO": "PO-2609-04", "NO SQ": "SIBSQ26090003", "NO BPV": "", "STATUS BPV": "Belum BPV", "ITEM": "Toner Printer LaserJet Hitam", "QTY": 8, "VENDOR": "CV MITRA NIAGA ABADI", "HPP EXCLUDE PPN": 18400000, "PENJUALAN EXCLUDE PPN": 22100000, "STATUS": "PROSES VENDOR" },
-      { "TGL PO": "2026-10-15", "KATEGORI": "PROYEK", "CUSTOMER": "PT. WAHANA KARYA MANDIRI", "NO PR": "PR-2610-05", "NO PO": "PO-2610-05", "NO SQ": "SIBSQ26100004", "NO BPV": "BPV-05", "STATUS BPV": "Sudah Bayar DP", "ITEM": "CCTV Bullet 4MP IP PoE", "QTY": 12, "VENDOR": "PT DAYA SENTOSA UTAMA", "HPP EXCLUDE PPN": 64000000, "PENJUALAN EXCLUDE PPN": 76000000, "STATUS": "PROSES VENDOR" },
-      { "TGL PO": "2026-11-10", "KATEGORI": "FULL PAYMENT", "CUSTOMER": "PT. AGRO MINA INTI NUSANTARA", "NO PR": "PR-2611-06", "NO PO": "PO-2611-06", "NO SQ": "SIBSQ26110005", "NO BPV": "BPV-06", "STATUS BPV": "Belum Dibayar", "ITEM": "Pompa Air Celup 2 HP", "QTY": 4, "VENDOR": "PT TEKNIK AGRO MANDIRI", "HPP EXCLUDE PPN": 29500000, "PENJUALAN EXCLUDE PPN": 35200000, "STATUS": "PENDING" },
-      { "TGL PO": "2026-11-12", "KATEGORI": "GA SIBIMA", "CUSTOMER": "GA SIBIMA", "NO PR": "PR-INT-01", "NO PO": "PO-INT-01", "NO SQ": "-", "NO BPV": "BPV-INT-01", "STATUS BPV": "Sudah Bayar Lunas", "ITEM": "ATK & Kebutuhan Operasional Kantor", "QTY": 1, "VENDOR": "TOKO ATK MAKMUR", "HPP EXCLUDE PPN": 4500000, "PENJUALAN EXCLUDE PPN": 0, "STATUS": "SUDAH DITERIMA" }
+      { "KATEGORI": "ASRI", "CUSTOMER": "PT. ASRI KARYA LESTARI", "NO PO CUSTOMER": "PO-CUST-01", "TGL SO": "2026-06-15", "NO SO": "SO-2606-01", "KATEGORI (1)": "ELEKTRONIK", "ITEM": "Panel Distribusi Utama", "NO SQ": "SIBSQ26060001", "QTY": 2, "TOTAL HARGA BELI": 42000000, "TOTAL HARGA JUAL": 49500000, "NAMA VENDOR": "PT DAYA SENTOSA UTAMA", "TGL PR": "2026-06-14", "NO PR": "PR-2606-01", "TGL PO": "2026-06-15", "NO PO": "PO-2606-01", "TGL BPV": "2026-06-20", "STATUS BPV": "DONE", "STATUS": "Sudah Diterima" },
+      { "KATEGORI": "GA SIBIMA", "CUSTOMER": "GA SIBIMA", "NO PO CUSTOMER": "-", "TGL SO": "2026-11-12", "NO SO": "-", "KATEGORI (1)": "HOUSEHOLD", "ITEM": "ATK & Kebutuhan Operasional Kantor", "NO SQ": "-", "QTY": 1, "TOTAL HARGA BELI": 4500000, "TOTAL HARGA JUAL": 0, "NAMA VENDOR": "TOKO ATK MAKMUR", "TGL PR": "2026-11-11", "NO PR": "PR-INT-01", "TGL PO": "2026-11-12", "NO PO": "PO-INT-01", "TGL BPV": "2026-11-13", "STATUS BPV": "DONE", "STATUS": "Sudah Diterima" }
     ];
 
     const BULAN_ID = [
@@ -693,40 +686,65 @@
 
     function getOrderSchema(rows) {
       const cols = rows.length ? Object.keys(rows[0]) : [];
+      const katSegmen = findCol(cols, [c => c === "KATEGORI"]);
+      const katBarang = findCol(cols, [c => c === "KATEGORI (1)", c => c.includes("KATEGORI BARANG")]) || katSegmen;
+
       return {
-        date: findCol(cols, [c => c === "TGL PO", c => c.includes("TGL PO"), c => c.includes("TANGGAL PO"), c => c.includes("TGL")]),
-        kategori: findCol(cols, [c => c === "KATEGORI", c => c.includes("KATEGORI")]),
-        customer: findCol(cols, [c => c === "CUSTOMER", c => c.includes("CUSTOMER") && !c.includes("PIC")]),
-        vendor: findCol(cols, [c => c === "VENDOR", c => c.includes("VENDOR"), c => c.includes("SUPPLIER")]),
+        date: findCol(cols, [
+          c => c === "TGL PO",
+          c => c === "TGL SO",
+          c => c === "TGL PO CUSTOMER",
+          c => c.startsWith("TGL ")
+        ]),
+        fallbackDates: cols.filter(c => c === "TGL PO" || c === "TGL SO" || c === "TGL PO CUSTOMER" || c === "TGL PR"),
+        kategoriSegmen: katSegmen,
+        kategoriBarang: katBarang,
+        customer: findCol(cols, [c => c === "CUSTOMER", c => c.includes("CUSTOMER") && !c.includes("PIC") && !c.includes("PO")]),
+        vendor: findCol(cols, [c => c === "NAMA VENDOR", c => c === "VENDOR", c => c.includes("VENDOR"), c => c.includes("SUPPLIER")]),
         status: findCol(cols, [c => c === "STATUS", c => c.includes("STATUS") && !c.includes("BPV")]),
-        statusBpv: findCol(cols, [c => c.includes("STATUS BPV"), c => c.includes("DATA BPV"), c => c.includes("BPV") && !c.includes("NO BPV")]),
+        statusBpv: findCol(cols, [
+          c => c === "STATUS BPV",
+          c => c.includes("STATUS BPV"),
+          c => c.includes("DATA BPV"),
+          c => c.includes("BPV") && !c.includes("NO BPV") && !c.startsWith("TGL") && !c.startsWith("TANGGAL")
+        ]),
+        tglBpv: findCol(cols, [c => c === "TGL BPV", c => c.includes("TGL BPV")]),
         noPr: findCol(cols, [c => c === "NO PR", c => c.includes("NO PR")]),
         noPo: findCol(cols, [c => c === "NO PO", c => c.includes("NO PO") && !c.includes("CUSTOMER")]),
+        noPoCust: findCol(cols, [c => c === "NO PO CUSTOMER"]),
+        noSo: findCol(cols, [c => c === "NO SO"]),
         noSq: findCol(cols, [c => c === "NO SQ", c => c.includes("NO SQ")]),
         noBpv: findCol(cols, [c => c === "NO BPV", c => c.includes("NO BPV")]),
-        item: findCol(cols, [c => c === "ITEM", c => c.includes("ITEM"), c => c.includes("BARANG")]),
+        item: findCol(cols, [c => c === "ITEM", c => c.includes("ITEM"), c => c.includes("BARANG") && !c.includes("KODE")]),
         qty: findCol(cols, [c => c === "QTY", c => c.includes("QTY")]),
         hppExcl: findCol(cols, [
-          c => c.includes("HPP") && (c.includes("EXCL") || c.includes("EXL") || c.includes("NON PPN") || c.includes("TANPA PPN")),
-          c => c.includes("BELI") && (c.includes("EXCL") || c.includes("EXL") || c.includes("NON PPN")),
-          c => c === "HPP",
+          c => c === "TOTAL HARGA BELI",
+          c => c.includes("HPP") && (c.includes("EXCL") || c.includes("EXL") || c.includes("NON PPN")),
           c => c.includes("TOTAL HARGA BELI"),
-          c => c.includes("HARGA BELI")
+          c => c === "HARGA BELI"
         ]),
         jualExcl: findCol(cols, [
-          c => c.includes("JUAL") && (c.includes("EXCL") || c.includes("EXL") || c.includes("NON PPN") || c.includes("TANPA PPN")),
-          c => c.includes("PENJUALAN") && (c.includes("EXCL") || c.includes("EXL") || c.includes("NON PPN")),
+          c => c === "TOTAL HARGA JUAL",
+          c => c.includes("JUAL") && (c.includes("EXCL") || c.includes("EXL") || c.includes("NON PPN")),
           c => c.includes("TOTAL HARGA JUAL"),
-          c => c.includes("HARGA JUAL")
+          c => c === "HARGA JUAL"
         ]),
-        ppnFlag: findCol(cols, [c => c === "PPN", c => c.includes("STATUS PPN"), c => c.includes("PAJAK")]),
-        tglGrn: findCol(cols, [c => c.includes("TGL GRN"), c => c.includes("GRN")]),
-        tglTerima: findCol(cols, [c => c.includes("TGL CUST TERIMA"), c => c.includes("TGL TERIMA"), c => c.includes("TERIMA")])
+        tglGrn: findCol(cols, [c => c === "TGL GRN", c => c.includes("GRN") && c.startsWith("TGL")]),
+        tglTerima: findCol(cols, [c => c === "TGL CUST TERIMA", c => c.includes("TGL TERIMA"), c => c.includes("TERIMA")])
       };
     }
 
+    function getRowDate(row, sc) {
+      const candidates = [sc.date, ...(sc.fallbackDates || [])].filter(Boolean);
+      for (const col of candidates) {
+        const dt = parseDateSafe(row[col]);
+        if (dt) return dt;
+      }
+      return null;
+    }
+
     function isInternalTransaction(row, sc) {
-      const kat = sc.kategori ? String(row[sc.kategori] || "").toUpperCase().trim() : "";
+      const kat = sc.kategoriSegmen ? String(row[sc.kategoriSegmen] || "").toUpperCase().trim() : "";
       const cust = sc.customer ? String(row[sc.customer] || "").toUpperCase().trim() : "";
       const combined = ` ${kat} ${cust} `;
       return INTERNAL_KEYWORDS.some(kw => {
@@ -767,7 +785,7 @@
       if (st.includes("COMPLETE") || st.includes("SUDAH DITERIMA") || st.includes("DONE") || st.includes("SELESAI") || hasGrn || hasTrm) {
         return "COMPLETE";
       }
-      if (st.includes("PARTIAL") || st.includes("SEBAGIAN") || st.includes("KIRIM")) {
+      if (st.includes("PARTIAL") || st.includes("SEBAGIAN") || st.includes("KIRIM") || st.includes("ON DELIVERY")) {
         return "PARTIAL";
       }
       return "OPEN";
@@ -779,15 +797,19 @@
     }
 
     function classifyBpvStatus(row, sc) {
-      const raw = sc.statusBpv ? String(row[sc.statusBpv] || "").toLowerCase().trim() : "";
-      const hasBpvNo = sc.noBpv ? hasValue(row[sc.noBpv]) : false;
+      const rawVal = sc.statusBpv && hasValue(row[sc.statusBpv]) ? String(row[sc.statusBpv]).trim() : "";
+      const lower = rawVal.toLowerCase();
+      const hasTglBpv = sc.tglBpv ? hasValue(row[sc.tglBpv]) : false;
 
-      if (raw.includes("lunas")) return "Sudah Bayar Lunas";
-      if (raw.includes("dp")) return "Sudah Bayar DP";
-      if (raw.includes("hutang")) return "Hutang";
-      if (raw.includes("belum dibayar") || raw.includes("belum bayar")) return "Belum Dibayar";
-      if (raw.includes("belum bpv") || (!hasBpvNo && !raw)) return "Belum BPV";
-      return sc.statusBpv && hasValue(row[sc.statusBpv]) ? String(row[sc.statusBpv]).trim() : "Belum BPV";
+      if (!rawVal) {
+        return hasTglBpv ? "Sudah BPV (Status Kosong)" : "Belum BPV";
+      }
+      if (lower === "done" || lower.includes("lunas") || lower.includes("selesai")) return "Done / Lunas";
+      if (lower.includes("dp")) return "Sudah Bayar DP";
+      if (lower.includes("hutang")) return "Hutang";
+      if (lower.includes("belum dibayar") || lower.includes("belum bayar")) return "Belum Dibayar";
+      if (lower.includes("belum bpv")) return "Belum BPV";
+      return rawVal;
     }
 
     function populateFilters() {
@@ -805,11 +827,9 @@
       const vends = new Set();
 
       state.orderRows.forEach(r => {
-        if (sc.date) {
-          const dt = parseDateSafe(r[sc.date]);
-          if (dt) monthKeys.add(getMonthKey(dt));
-        }
-        if (sc.kategori && hasValue(r[sc.kategori])) kats.add(String(r[sc.kategori]).trim());
+        const dt = getRowDate(r, sc);
+        if (dt) monthKeys.add(getMonthKey(dt));
+        if (sc.kategoriBarang && hasValue(r[sc.kategoriBarang])) kats.add(String(r[sc.kategoriBarang]).trim());
         if (sc.vendor && hasValue(r[sc.vendor])) vends.add(String(r[sc.vendor]).trim());
       });
 
@@ -837,11 +857,11 @@
       const kw = document.getElementById("filterKeyword").value.trim().toLowerCase();
 
       const matching = state.orderRows.filter(row => {
-        if (per !== "ALL" && sc.date) {
-          const dt = parseDateSafe(row[sc.date]);
+        if (per !== "ALL") {
+          const dt = getRowDate(row, sc);
           if (!dt || getMonthKey(dt) !== per) return false;
         }
-        if (kat !== "ALL" && sc.kategori && String(row[sc.kategori] || "").trim() !== kat) return false;
+        if (kat !== "ALL" && sc.kategoriBarang && String(row[sc.kategoriBarang] || "").trim() !== kat) return false;
         if (ven !== "ALL" && sc.vendor && String(row[sc.vendor] || "").trim() !== ven) return false;
         if (stPo !== "ALL" && classifyPoStatus(row, sc) !== stPo) return false;
         if (kw) {
@@ -905,9 +925,7 @@
       };
 
       const katMap = new Map();
-      const bpvOrder = ["Hutang", "Sudah Bayar DP", "Sudah Bayar Lunas", "Belum Dibayar", "Belum BPV"];
       const bpvMap = new Map();
-      bpvOrder.forEach(k => bpvMap.set(k, { label: k, value: 0, count: 0 }));
 
       rows.forEach(r => {
         if (sc.noPr && hasValue(r[sc.noPr])) prSet.add(String(r[sc.noPr]).trim());
@@ -918,22 +936,22 @@
         totalHppExcl += hpp;
         totalPenjualanExcl += jual;
 
-        if (sc.date) {
-          const dt = parseDateSafe(r[sc.date]);
-          if (dt) {
-            const mk = getMonthKey(dt);
-            if (!monthTrendMap.has(mk)) monthTrendMap.set(mk, { hpp: 0, jual: 0 });
-            const mEntry = monthTrendMap.get(mk);
-            mEntry.hpp += hpp;
-            mEntry.jual += jual;
-          }
+        const dt = getRowDate(r, sc);
+        if (dt) {
+          const mk = getMonthKey(dt);
+          if (!monthTrendMap.has(mk)) monthTrendMap.set(mk, { hpp: 0, jual: 0 });
+          const mEntry = monthTrendMap.get(mk);
+          mEntry.hpp += hpp;
+          mEntry.jual += jual;
         }
 
         const poClass = classifyPoStatus(r, sc);
         poStats[poClass].count += 1;
         poStats[poClass].value += hpp;
 
-        const katName = sc.kategori && hasValue(r[sc.kategori]) ? String(r[sc.kategori]).trim().toUpperCase() : "LAINNYA";
+        const katName = sc.kategoriBarang && hasValue(r[sc.kategoriBarang])
+          ? String(r[sc.kategoriBarang]).trim().toUpperCase()
+          : "LAINNYA";
         if (!katMap.has(katName)) katMap.set(katName, { hpp: 0, jual: 0 });
         const kEntry = katMap.get(katName);
         kEntry.hpp += hpp;
@@ -1111,14 +1129,14 @@
       });
 
       const katSorted = [...katMap.entries()].sort((a, b) => b[1].hpp - a[1].hpp);
-      const barColors = ["#1d4ed8", "#10b981", "#7c3aed", "#f59e0b", "#0ea5e9", "#ec4899"];
+      const barColors = ["#1d4ed8", "#10b981", "#7c3aed", "#f59e0b", "#0ea5e9", "#ec4899", "#14b8a6", "#f43f5e"];
       const katListEl = document.getElementById("kategoriBarList");
       document.getElementById("kategoriTotalLabel").textContent = formatRupiah(totalHppExcl);
 
       if (katSorted.length === 0) {
-        katListEl.innerHTML = `<div class="text-xs text-slate-400 text-center py-8">Tidak ada data kategori komersial.</div>`;
+        katListEl.innerHTML = `<div class="text-xs text-slate-400 text-center py-8">Tidak ada data kategori barang komersial.</div>`;
       } else {
-        katListEl.innerHTML = katSorted.slice(0, 6).map(([name, obj], idx) => {
+        katListEl.innerHTML = katSorted.slice(0, 8).map(([name, obj], idx) => {
           const sharePct = totalHppExcl > 0 ? (obj.hpp / totalHppExcl) * 100 : 0;
           const catMargin = obj.jual - obj.hpp;
           const catMarginPct = obj.jual > 0 ? (catMargin / obj.jual) * 100 : 0;
@@ -1132,7 +1150,7 @@
                   <span class="text-blue-600 font-semibold">(Margin ${catMarginPct.toFixed(1).replace(".", ",")}%)</span>
                 </span>
               </div>
-              <div class="w-full h-3.5 bg-slate-100 rounded-full overflow-hidden">
+              <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
                 <div class="h-full rounded-full transition-all duration-300" style="width:${Math.max(obj.hpp > 0 ? 3 : 0, Math.min(100, sharePct))}%; background-color:${color};"></div>
               </div>
             </div>
@@ -1140,15 +1158,16 @@
         }).join("");
       }
 
-      const bpvEntries = [...bpvMap.values()];
-      const bpvLabels = bpvEntries.map(x => x.label);
-      const bpvValues = bpvEntries.map(x => x.value);
+      const bpvEntries = [...bpvMap.values()].sort((a, b) => b.value - a.value);
+      const bpvLabels = bpvEntries.length ? bpvEntries.map(x => x.label) : ["Tidak Ada Outstanding"];
+      const bpvValues = bpvEntries.length ? bpvEntries.map(x => x.value) : [0];
       const bpvPalette = {
-        "Hutang": "#64748b",
+        "Done / Lunas": "#10b981",
         "Sudah Bayar DP": "#8b5cf6",
-        "Sudah Bayar Lunas": "#10b981",
+        "Hutang": "#64748b",
         "Belum Dibayar": "#f59e0b",
-        "Belum BPV": "#ef4444"
+        "Belum BPV": "#ef4444",
+        "Sudah BPV (Status Kosong)": "#0ea5e9"
       };
       const bpvColors = bpvLabels.map(l => bpvPalette[l] || "#2563eb");
 
@@ -1195,22 +1214,26 @@
       });
 
       const bpvGridEl = document.getElementById("bpvCardsGrid");
-      bpvGridEl.innerHTML = bpvEntries.map(item => {
-        const share = totalOut > 0 ? (item.value / totalOut) * 100 : 0;
-        const dotColor = bpvPalette[item.label] || "#2563eb";
-        return `
-          <div class="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
-            <div class="flex items-center gap-1.5 text-xs font-bold text-slate-800">
-              <span class="w-2 h-2 rounded-full" style="background-color:${dotColor}"></span>
-              <span class="truncate">${escapeHtml(item.label)}</span>
+      if (!bpvEntries.length) {
+        bpvGridEl.innerHTML = `<div class="col-span-2 rounded-xl border border-slate-200 bg-slate-50/60 p-4 text-xs text-slate-400 text-center">Seluruh transaksi komersial terfilter sudah terealisasi (Outstanding Rp 0).</div>`;
+      } else {
+        bpvGridEl.innerHTML = bpvEntries.map(item => {
+          const share = totalOut > 0 ? (item.value / totalOut) * 100 : 0;
+          const dotColor = bpvPalette[item.label] || "#2563eb";
+          return `
+            <div class="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+              <div class="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                <span class="w-2 h-2 rounded-full" style="background-color:${dotColor}"></span>
+                <span class="truncate">${escapeHtml(item.label)}</span>
+              </div>
+              <div class="text-xs sm:text-sm font-extrabold text-slate-900 mt-1">
+                ${formatRupiah(item.value)} <span class="text-[11px] font-semibold text-slate-500">(${share.toFixed(1).replace(".", ",")}%)</span>
+              </div>
+              <div class="text-[11px] text-slate-400 mt-0.5">${formatNumber(item.count)} baris</div>
             </div>
-            <div class="text-xs sm:text-sm font-extrabold text-slate-900 mt-1">
-              ${formatRupiah(item.value)} <span class="text-[11px] font-semibold text-slate-500">(${share.toFixed(1).replace(".", ",")}%)</span>
-            </div>
-            <div class="text-[11px] text-slate-400 mt-0.5">${formatNumber(item.count)} baris</div>
-          </div>
-        `;
-      }).join("");
+          `;
+        }).join("");
+      }
 
       document.getElementById("bpvTotalOutstandingLabel").textContent = `Total Outstanding: ${formatRupiah(totalOut)}`;
 
@@ -1237,7 +1260,7 @@
         else openInt += 1;
 
         const bpvSt = classifyBpvStatus(r, sc);
-        if (bpvSt !== "Sudah Bayar Lunas") pendingBpvInt += 1;
+        if (bpvSt !== "Done / Lunas") pendingBpvInt += 1;
       });
 
       document.getElementById("intTotalPr").textContent = formatNumber(prInt.size);
@@ -1257,8 +1280,8 @@
       }
 
       const cols = [
-        sc.date, sc.kategori, sc.customer, sc.noPr, sc.noPo,
-        sc.noBpv, sc.statusBpv, sc.vendor, sc.item, sc.qty,
+        sc.date, sc.kategoriSegmen, sc.customer, sc.kategoriBarang, sc.noPr, sc.noPo,
+        sc.tglBpv, sc.statusBpv, sc.vendor, sc.item, sc.qty,
         sc.hppExcl, sc.status
       ].filter(Boolean);
 
@@ -1267,7 +1290,7 @@
         const cells = cols.map(c => {
           let val = r[c];
           const u = String(c).toUpperCase();
-          if (u.includes("TGL") || u.includes("TANGGAL")) val = formatTanggalIndo(val);
+          if (u.startsWith("TGL") || u.includes("TANGGAL")) val = formatTanggalIndo(val);
           else if (c === sc.hppExcl) val = formatRupiah(getRowHppExclPpn(r, sc));
           return `<td class="px-3 py-2 max-w-[230px] truncate" title="${escapeHtml(val)}">${escapeHtml(hasValue(val) ? val : "-")}</td>`;
         }).join("");
@@ -1287,13 +1310,13 @@
       }
 
       const baseCols = [
-        sc.date, sc.kategori, sc.customer, sc.noPr, sc.noPo, sc.noSq,
-        sc.noBpv, sc.statusBpv, sc.vendor, sc.item, sc.qty,
+        sc.date, sc.kategoriSegmen, sc.customer, sc.kategoriBarang, sc.noPr, sc.noPo, sc.noSq,
+        sc.tglBpv, sc.statusBpv, sc.vendor, sc.item, sc.qty,
         sc.hppExcl, sc.jualExcl
-      ].filter(Boolean);
+      ].filter((v, idx, arr) => Boolean(v) && arr.indexOf(v) === idx);
 
       const headerHtml = [
-        ...baseCols.map(c => `<th class="px-3 py-2.5 border-b whitespace-nowrap">${escapeHtml(c)}</th>`),
+        ...baseCols.map(c => `<th class="px-3 py-2.5 border-b whitespace-nowrap">${escapeHtml(c === "KATEGORI (1)" ? "KATEGORI BARANG" : c)}</th>`),
         `<th class="px-3 py-2.5 border-b whitespace-nowrap text-blue-700">MARGIN (EXCL. PPN)</th>`,
         `<th class="px-3 py-2.5 border-b whitespace-nowrap text-blue-700">MARGIN %</th>`,
         sc.status ? `<th class="px-3 py-2.5 border-b whitespace-nowrap">${escapeHtml(sc.status)}</th>` : ""
@@ -1310,7 +1333,7 @@
         const cells = baseCols.map(c => {
           let val = r[c];
           const u = String(c).toUpperCase();
-          if (u.includes("TGL") || u.includes("TANGGAL")) {
+          if (u.startsWith("TGL") || u.includes("TANGGAL")) {
             val = formatTanggalIndo(val);
           } else if (c === sc.hppExcl) {
             val = formatRupiah(hpp);
