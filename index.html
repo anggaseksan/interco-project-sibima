@@ -486,6 +486,8 @@
         </span>
       </div>
 
+      <div id="keywordBuyerSummary" class="hidden rounded-xl border border-blue-200 bg-blue-50/70 px-3.5 py-2.5 text-xs text-blue-900 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"></div>
+
       <div class="table-wrap overflow-x-auto border border-slate-200 rounded-xl max-h-[420px]">
         <table class="min-w-full text-left text-xs border-collapse">
           <thead id="theadTransactions" class="bg-slate-100 text-slate-700 font-semibold sticky top-0 z-10"></thead>
@@ -558,19 +560,65 @@
     function parseDateSafe(val) {
       if (!hasValue(val)) return null;
       const raw = String(val).trim();
+
+      // Format YYYY-MM-DD atau YYYY/MM/DD
       const iso = raw.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
       if (iso) {
-        const dt = new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
+        const yr = Number(iso[1]);
+        const mo = Number(iso[2]) - 1;
+        const da = Number(iso[3]);
+        if (yr < 2015 || yr > 2035 || mo < 0 || mo > 11 || da < 1 || da > 31) return null;
+        const dt = new Date(yr, mo, da);
         return Number.isNaN(dt.getTime()) ? null : dt;
       }
+
+      // Format DD-MM-YYYY / DD/MM/YYYY atau DD-MM-YY / DD/MM/YY
       const dmy = raw.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})/);
       if (dmy) {
-        const yr = dmy[3].length === 2 ? Number("20" + dmy[3]) : Number(dmy[3]);
-        const dt = new Date(yr, Number(dmy[2]) - 1, Number(dmy[1]));
+        const p1 = Number(dmy[1]);
+        const p2 = Number(dmy[2]);
+        let yr = dmy[3].length === 2 ? Number("20" + dmy[3]) : Number(dmy[3]);
+        if (yr < 2015 || yr > 2035) return null;
+
+        let day = p1;
+        let monthIdx = p2 - 1;
+        // Jika format sheet US (MM/DD/YYYY) dimana bulan > 12 tetapi hari <= 12
+        if (p2 > 12 && p1 >= 1 && p1 <= 12) {
+          monthIdx = p1 - 1;
+          day = p2;
+        }
+        if (monthIdx < 0 || monthIdx > 11 || day < 1 || day > 31) return null;
+        const dt = new Date(yr, monthIdx, day);
         return Number.isNaN(dt.getTime()) ? null : dt;
       }
-      const dt = new Date(raw);
-      return Number.isNaN(dt.getTime()) ? null : dt;
+
+      // Format tanggal Indonesia seperti "9 Juli 2026" atau "09 Jul 2026"
+      const indoMatch = raw.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{2,4})$/);
+      if (indoMatch) {
+        const day = Number(indoMatch[1]);
+        const monStr = indoMatch[2].toLowerCase();
+        const yr = indoMatch[3].length === 2 ? Number("20" + indoMatch[3]) : Number(indoMatch[3]);
+        const monthMap = {
+          jan: 0, januari: 0,
+          feb: 1, februari: 1,
+          mar: 2, maret: 2,
+          apr: 3, april: 3,
+          mei: 4, may: 4,
+          jun: 5, juni: 5,
+          jul: 6, juli: 6,
+          agu: 7, ags: 7, agustus: 7,
+          sep: 8, september: 8,
+          okt: 9, oct: 9, oktober: 9,
+          nov: 10, november: 10,
+          des: 11, dec: 11, desember: 11
+        };
+        if (Object.prototype.hasOwnProperty.call(monthMap, monStr) && yr >= 2015 && yr <= 2035 && day >= 1 && day <= 31) {
+          const dt = new Date(yr, monthMap[monStr], day);
+          return Number.isNaN(dt.getTime()) ? null : dt;
+        }
+      }
+
+      return null;
     }
 
     function formatTanggalIndo(val) {
@@ -615,6 +663,15 @@
       const n = parseFloat(s);
       if (!Number.isFinite(n)) return 0;
       return isNeg ? -n : n;
+    }
+
+    function normalizeVendorKey(val) {
+      if (!hasValue(val)) return "";
+      return String(val)
+        .toUpperCase()
+        .replace(/[^A-Z0-9]+/g, " ")
+        .trim()
+        .replace(/\s+/g, " ");
     }
 
     function escapeHtml(str) {
@@ -862,11 +919,25 @@
       const vends = new Set();
       const users = new Set();
 
+      const vendorGroups = new Map();
       state.orderRows.forEach(r => {
         const dt = getRowDate(r, sc);
         if (dt) monthKeys.add(getMonthKey(dt));
         if (sc.kategoriBarang && hasValue(r[sc.kategoriBarang])) kats.add(String(r[sc.kategoriBarang]).trim());
-        if (sc.vendor && hasValue(r[sc.vendor])) vends.add(String(r[sc.vendor]).trim());
+        if (sc.vendor && hasValue(r[sc.vendor])) {
+          const rawV = String(r[sc.vendor]).trim().replace(/\s+/g, " ");
+          const normKey = normalizeVendorKey(rawV);
+          if (normKey) {
+            if (!vendorGroups.has(normKey)) {
+              vendorGroups.set(normKey, { label: rawV, count: 1 });
+            } else {
+              const g = vendorGroups.get(normKey);
+              g.count += 1;
+              // Pilih penulisan yang lebih rapi/lengkap jika jumlahnya sama atau lebih sering muncul
+              if (rawV.length > g.label.length && g.count <= 2) g.label = rawV;
+            }
+          }
+        }
         if (sc.userProc && hasValue(r[sc.userProc])) users.add(String(r[sc.userProc]).trim());
       });
 
@@ -877,8 +948,11 @@
       katSel.innerHTML = `<option value="ALL">(Semua)</option>` +
         [...kats].sort().map(k => `<option value="${escapeHtml(k)}">${escapeHtml(k)}</option>`).join("");
 
+      const sortedVendors = [...vendorGroups.entries()]
+        .map(([key, info]) => ({ key, label: info.label }))
+        .sort((a, b) => a.label.localeCompare(b.label, "id"));
       venSel.innerHTML = `<option value="ALL">(Semua)</option>` +
-        [...vends].sort().map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join("");
+        sortedVendors.map(v => `<option value="${escapeHtml(v.key)}">${escapeHtml(v.label)}</option>`).join("");
 
       usrSel.innerHTML = `<option value="ALL">(Semua)</option>` +
         [...users].sort().map(u => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join("");
@@ -904,12 +978,17 @@
           if (!dt || getMonthKey(dt) !== per) return false;
         }
         if (kat !== "ALL" && sc.kategoriBarang && String(row[sc.kategoriBarang] || "").trim() !== kat) return false;
-        if (ven !== "ALL" && sc.vendor && String(row[sc.vendor] || "").trim() !== ven) return false;
+        if (ven !== "ALL" && sc.vendor && normalizeVendorKey(row[sc.vendor]) !== ven) return false;
         if (usr !== "ALL" && sc.userProc && String(row[sc.userProc] || "").trim() !== usr) return false;
         if (stPo !== "ALL" && classifyPoStatus(row, sc) !== stPo) return false;
         if (kw) {
-          const hay = Object.values(row).join(" ").toLowerCase();
-          if (!hay.includes(kw)) return false;
+          const tokens = kw.split(/\s+/).filter(Boolean);
+          const itemTxt = sc.item ? String(row[sc.item] || "").toLowerCase() : "";
+          const custTxt = sc.customer ? String(row[sc.customer] || "").toLowerCase() : "";
+          const katTxt = sc.kategoriSegmen ? String(row[sc.kategoriSegmen] || "").toLowerCase() : "";
+          const hay = `${Object.values(row).join(" ")} ${itemTxt} ${custTxt} ${katTxt}`.toLowerCase();
+          const allMatch = tokens.every(tok => hay.includes(tok));
+          if (!allMatch) return false;
         }
         return true;
       });
@@ -1442,7 +1521,38 @@
     function renderTransactionTable(rows, sc) {
       const thead = document.getElementById("theadTransactions");
       const tbody = document.getElementById("tbodyTransactions");
+      const kwVal = document.getElementById("filterKeyword").value.trim();
+      const summaryBox = document.getElementById("keywordBuyerSummary");
       document.getElementById("tableRowCount").textContent = `${formatNumber(rows.length)} baris ditampilkan`;
+
+      if (kwVal && rows.length > 0) {
+        const buyers = new Set();
+        const itemsMatched = new Set();
+        rows.forEach(r => {
+          const bName = (sc.customer && hasValue(r[sc.customer]))
+            ? String(r[sc.customer]).trim()
+            : ((sc.kategoriSegmen && hasValue(r[sc.kategoriSegmen])) ? String(r[sc.kategoriSegmen]).trim() : "");
+          if (bName) buyers.add(bName);
+          if (sc.item && hasValue(r[sc.item])) itemsMatched.add(String(r[sc.item]).trim());
+        });
+        const buyerListText = buyers.size ? [...buyers].slice(0, 8).join(", ") + (buyers.size > 8 ? ` (+${buyers.size - 8} lainnya)` : "") : "-";
+        summaryBox.innerHTML = `
+          <div>
+            <span class="font-bold">Hasil Pencarian "${escapeHtml(kwVal)}":</span>
+            <span>${formatNumber(rows.length)} transaksi ditemukan</span>
+            <span class="mx-1.5">•</span>
+            <span class="font-semibold">Pembeli / Customer:</span> ${escapeHtml(buyerListText)}
+          </div>
+          <div class="text-[11px] font-semibold text-blue-700 shrink-0">${formatNumber(itemsMatched.size)} variasi item</div>
+        `;
+        summaryBox.classList.remove("hidden");
+      } else if (kwVal && rows.length === 0) {
+        summaryBox.innerHTML = `<div><span class="font-bold">Hasil Pencarian "${escapeHtml(kwVal)}":</span> Tidak ada transaksi barang/dokumen yang cocok.</div>`;
+        summaryBox.classList.remove("hidden");
+      } else {
+        summaryBox.classList.add("hidden");
+        summaryBox.innerHTML = "";
+      }
 
       if (!rows.length) {
         thead.innerHTML = "";
