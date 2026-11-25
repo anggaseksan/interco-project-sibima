@@ -367,7 +367,7 @@
       <div class="flex items-start justify-between gap-2">
         <div>
           <h2 class="text-base sm:text-lg font-bold text-slate-900">Outstanding Berdasarkan Status BPV (Komersial)</h2>
-          <p class="text-xs text-slate-500">Pembagian Nilai Sisa HPP Exclude PPN berdasarkan kolom STATUS BPV</p>
+          <p class="text-xs text-slate-500">Monitoring pengajuan pembayaran (BELUM BPV → CREATED → HUTANG N+30 → SENT TO AP → DONE)</p>
         </div>
         <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-100 shrink-0">
           ● BPV Status
@@ -383,7 +383,7 @@
       </div>
 
       <div class="pt-2 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-[11px] text-slate-400">
-        <span>Seluruh outstanding komersial terbagi berdasarkan status pembayaran / BPV.</span>
+        <span>Seluruh outstanding komersial terbagi berdasarkan tahapan pengajuan pembayaran (STATUS BPV).</span>
         <span id="bpvTotalOutstandingLabel" class="font-semibold text-slate-600">Total Outstanding: Rp 0</span>
       </div>
     </section>
@@ -429,7 +429,7 @@
           <div id="intOpenCount" class="text-lg font-extrabold text-amber-700 mt-0.5">0</div>
         </div>
         <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
-          <div class="text-[11px] font-semibold text-slate-500">Belum BPV / Belum Lunas</div>
+          <div class="text-[11px] font-semibold text-slate-500">BPV Belum Done</div>
           <div id="intPendingBpvCount" class="text-lg font-extrabold text-rose-700 mt-0.5">0</div>
         </div>
       </div>
@@ -472,6 +472,7 @@
     };
     const AUTO_REFRESH_MS = 60000;
     const INTERNAL_KEYWORDS = ["GA SIBIMA", "AMIN", "GA AMIIN", "GA AMIN", "INTERNAL"];
+    const BPV_STATUS_ORDER = ["BELUM BPV", "CREATED", "HUTANG N+30", "SENT TO AP", "DONE"];
 
     const SAMPLE_RFQ_ROWS = [
       { "TANGGAL RFQ": "2026-07-09", "KATEGORI": "PROYEK", "KATEGORI (1)": "ELEKTRONIK", "CUSTOMER": "PT. ASRI KARYA LESTARI", "ITEM PERMINTAAN": "UPS Rackmount 3000VA", "QTY": 2, "STATUS": "COMPLETE", "NO SQ": "SIBSQ26070001" }
@@ -797,18 +798,17 @@
     }
 
     function classifyBpvStatus(row, sc) {
-      const rawVal = sc.statusBpv && hasValue(row[sc.statusBpv]) ? String(row[sc.statusBpv]).trim() : "";
-      const lower = rawVal.toLowerCase();
+      const rawVal = sc.statusBpv && hasValue(row[sc.statusBpv]) ? String(row[sc.statusBpv]).trim().toUpperCase() : "";
       const hasTglBpv = sc.tglBpv ? hasValue(row[sc.tglBpv]) : false;
 
       if (!rawVal) {
-        return hasTglBpv ? "Sudah BPV (Status Kosong)" : "Belum BPV";
+        return hasTglBpv ? "CREATED" : "BELUM BPV";
       }
-      if (lower === "done" || lower.includes("lunas") || lower.includes("selesai")) return "Done / Lunas";
-      if (lower.includes("dp")) return "Sudah Bayar DP";
-      if (lower.includes("hutang")) return "Hutang";
-      if (lower.includes("belum dibayar") || lower.includes("belum bayar")) return "Belum Dibayar";
-      if (lower.includes("belum bpv")) return "Belum BPV";
+      if (rawVal.includes("BELUM BPV")) return "BELUM BPV";
+      if (rawVal.includes("CREATED")) return "CREATED";
+      if (rawVal.includes("HUTANG")) return "HUTANG N+30";
+      if (rawVal.includes("SENT TO AP") || rawVal.includes("AP")) return "SENT TO AP";
+      if (rawVal === "DONE" || rawVal.includes("LUNAS") || rawVal.includes("SELESAI")) return "DONE";
       return rawVal;
     }
 
@@ -926,6 +926,7 @@
 
       const katMap = new Map();
       const bpvMap = new Map();
+      BPV_STATUS_ORDER.forEach(st => bpvMap.set(st, { label: st, value: 0, count: 0 }));
 
       rows.forEach(r => {
         if (sc.noPr && hasValue(r[sc.noPr])) prSet.add(String(r[sc.noPr]).trim());
@@ -1158,16 +1159,15 @@
         }).join("");
       }
 
-      const bpvEntries = [...bpvMap.values()].sort((a, b) => b.value - a.value);
-      const bpvLabels = bpvEntries.length ? bpvEntries.map(x => x.label) : ["Tidak Ada Outstanding"];
-      const bpvValues = bpvEntries.length ? bpvEntries.map(x => x.value) : [0];
+      const bpvEntries = [...bpvMap.values()];
+      const bpvLabels = bpvEntries.map(x => x.label);
+      const bpvValues = bpvEntries.map(x => x.value);
       const bpvPalette = {
-        "Done / Lunas": "#10b981",
-        "Sudah Bayar DP": "#8b5cf6",
-        "Hutang": "#64748b",
-        "Belum Dibayar": "#f59e0b",
-        "Belum BPV": "#ef4444",
-        "Sudah BPV (Status Kosong)": "#0ea5e9"
+        "BELUM BPV": "#94a3b8",
+        "CREATED": "#64748b",
+        "HUTANG N+30": "#f87171",
+        "SENT TO AP": "#f59e0b",
+        "DONE": "#10b981"
       };
       const bpvColors = bpvLabels.map(l => bpvPalette[l] || "#2563eb");
 
@@ -1214,26 +1214,22 @@
       });
 
       const bpvGridEl = document.getElementById("bpvCardsGrid");
-      if (!bpvEntries.length) {
-        bpvGridEl.innerHTML = `<div class="col-span-2 rounded-xl border border-slate-200 bg-slate-50/60 p-4 text-xs text-slate-400 text-center">Seluruh transaksi komersial terfilter sudah terealisasi (Outstanding Rp 0).</div>`;
-      } else {
-        bpvGridEl.innerHTML = bpvEntries.map(item => {
-          const share = totalOut > 0 ? (item.value / totalOut) * 100 : 0;
-          const dotColor = bpvPalette[item.label] || "#2563eb";
-          return `
-            <div class="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
-              <div class="flex items-center gap-1.5 text-xs font-bold text-slate-800">
-                <span class="w-2 h-2 rounded-full" style="background-color:${dotColor}"></span>
-                <span class="truncate">${escapeHtml(item.label)}</span>
-              </div>
-              <div class="text-xs sm:text-sm font-extrabold text-slate-900 mt-1">
-                ${formatRupiah(item.value)} <span class="text-[11px] font-semibold text-slate-500">(${share.toFixed(1).replace(".", ",")}%)</span>
-              </div>
-              <div class="text-[11px] text-slate-400 mt-0.5">${formatNumber(item.count)} baris</div>
+      bpvGridEl.innerHTML = bpvEntries.map(item => {
+        const share = totalOut > 0 ? (item.value / totalOut) * 100 : 0;
+        const dotColor = bpvPalette[item.label] || "#2563eb";
+        return `
+          <div class="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+            <div class="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+              <span class="w-2.5 h-2.5 rounded-full" style="background-color:${dotColor}"></span>
+              <span class="truncate">${escapeHtml(item.label)}</span>
             </div>
-          `;
-        }).join("");
-      }
+            <div class="text-xs sm:text-sm font-extrabold text-slate-900 mt-1">
+              ${formatRupiah(item.value)} <span class="text-[11px] font-semibold text-slate-500">(${share.toFixed(1).replace(".", ",")}%)</span>
+            </div>
+            <div class="text-[11px] text-slate-400 mt-0.5">${formatNumber(item.count)} baris</div>
+          </div>
+        `;
+      }).join("");
 
       document.getElementById("bpvTotalOutstandingLabel").textContent = `Total Outstanding: ${formatRupiah(totalOut)}`;
 
@@ -1260,7 +1256,7 @@
         else openInt += 1;
 
         const bpvSt = classifyBpvStatus(r, sc);
-        if (bpvSt !== "Done / Lunas") pendingBpvInt += 1;
+        if (bpvSt !== "DONE") pendingBpvInt += 1;
       });
 
       document.getElementById("intTotalPr").textContent = formatNumber(prInt.size);
