@@ -374,7 +374,7 @@
       <div class="flex items-start justify-between gap-2">
         <div>
           <h2 class="text-base sm:text-lg font-bold text-slate-900">Transaksi per User (Komersial)</h2>
-          <p class="text-xs text-slate-500">Distribusi jumlah transaksi (PO/baris), nilai HPP Exclude PPN, dan margin per user/PIC</p>
+          <p class="text-xs text-slate-500">Distribusi jumlah transaksi (PO/baris), nilai HPP Exclude PPN, dan margin berdasarkan KATEGORI (singkatan customer)</p>
         </div>
         <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100 shrink-0">
           ● Per User
@@ -764,19 +764,7 @@
         ]),
         tglGrn: findCol(cols, [c => c === "TGL GRN", c => c.includes("GRN") && c.startsWith("TGL")]),
         tglTerima: findCol(cols, [c => c === "TGL CUST TERIMA", c => c.includes("TGL TERIMA"), c => c.includes("TERIMA")]),
-        userProc: findCol(cols, [
-          c => c === "USER",
-          c => c === "PIC",
-          c => c === "PIC PROCUREMENT",
-          c => c === "BUYER",
-          c => c === "PURCHASING",
-          c => c === "ADMIN",
-          c => c === "CREATED BY",
-          c => c.includes("USER"),
-          c => c.includes("PIC"),
-          c => c.includes("BUYER"),
-          c => c.includes("PURCHASING")
-        ])
+        userProc: katSegmen
       };
     }
 
@@ -1016,7 +1004,7 @@
 
         const userName = sc.userProc && hasValue(r[sc.userProc])
           ? String(r[sc.userProc]).trim().toUpperCase()
-          : "TANPA USER / PIC";
+          : "TANPA KATEGORI";
         if (!userMap.has(userName)) {
           userMap.set(userName, { name: userName, txCount: 0, poSet: new Set(), hpp: 0, jual: 0 });
         }
@@ -1385,8 +1373,8 @@
       }
 
       document.getElementById("userColSourceLabel").textContent = sc.userProc
-        ? `Sumber kolom user: ${sc.userProc}`
-        : "Kolom user/PIC belum ditemukan di sheet (menampilkan TANPA USER / PIC)";
+        ? `Sumber kolom: ${sc.userProc} (singkatan nama customer: ASRI, OLI, OLR, dll.)`
+        : "Kolom KATEGORI belum ditemukan di sheet (menampilkan TANPA KATEGORI)";
       document.getElementById("userTxSummaryLabel").textContent =
         `${formatNumber(userSorted.length)} User • ${formatNumber(totalTxCommercial)} Transaksi`;
 
