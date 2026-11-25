@@ -64,7 +64,7 @@
           </span>
         </div>
         <p class="text-xs sm:text-sm text-slate-500">
-          Div. Procurement & Interco • Sinkronisasi <span class="font-medium text-slate-700">MASTER RFQ</span> & <span class="font-medium text-slate-700">MASTER ORDER</span>
+          Div. Procurement & Interco • Sinkronisasi Real-Time <span class="font-medium text-slate-700">MASTER ORDER</span> & <span class="font-medium text-slate-700">MASTER RFQ</span> • Margin Komersial Exclude PPN
         </p>
       </div>
 
@@ -74,7 +74,7 @@
             <span id="syncDot" class="w-2 h-2 rounded-full bg-emerald-500"></span>
             Sinkron: <span id="syncTimestamp">Memuat...</span>
           </div>
-          <div id="syncCounts" class="text-[11px] text-slate-400 mt-0.5">0 dari 0 baris</div>
+          <div id="syncCounts" class="text-[11px] text-slate-400 mt-0.5">0 komersial • 0 internal</div>
         </div>
 
         <button id="btnRefresh" type="button" class="px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 active:scale-[0.99] transition flex items-center gap-1.5 shadow-2xs">
@@ -132,7 +132,7 @@
 
         <div>
           <label for="filterKeyword" class="block text-[11px] font-semibold text-slate-500 mb-1">Pencarian Kata Kunci</label>
-          <input id="filterKeyword" type="text" placeholder="Cari PO, SQ, PR, BPV, Item..." class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <input id="filterKeyword" type="text" placeholder="Cari PO, SQ, PR, BPV, Customer, Item..." class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
 
         <div class="flex items-end">
@@ -143,60 +143,71 @@
       </div>
     </section>
 
-    <!-- KPI CARDS ROW -->
-    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5">
-      <div class="card-surface kpi-card p-4">
-        <div class="flex items-center justify-between text-xs font-semibold text-slate-500 mb-2">
-          <span>Total PR</span>
-          <span class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-xs font-bold">PR</span>
-        </div>
-        <div id="kpiTotalPr" class="text-xl sm:text-2xl font-extrabold text-slate-900">0</div>
-        <div class="text-[11px] text-slate-400 mt-1">Nomor PR unik</div>
+    <!-- KPI CARDS ROW (KOMERSIAL EKSTERNAL - EXCLUDE PPN & EXCLUDE INTERNAL/CANCEL/PENDING) -->
+    <section class="space-y-2">
+      <div class="flex flex-wrap items-center justify-between gap-2 px-1">
+        <span class="text-xs font-bold uppercase tracking-wider text-slate-500">
+          Ringkasan Komersial Eksternal (Non-Internal • Non-Cancel/Pending)
+        </span>
+        <span id="excludedInfoBadge" class="text-[11px] font-medium text-slate-500 bg-white border border-slate-200 px-2.5 py-0.5 rounded-full">
+          0 baris Cancel/Pending dikecualikan dari margin
+        </span>
       </div>
 
-      <div class="card-surface kpi-card p-4">
-        <div class="flex items-center justify-between text-xs font-semibold text-slate-500 mb-2">
-          <span>Total PO</span>
-          <span class="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-bold">PO</span>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5">
+        <div class="card-surface kpi-card p-4">
+          <div class="flex items-center justify-between text-xs font-semibold text-slate-500 mb-2">
+            <span>Total PR</span>
+            <span class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-xs font-bold">PR</span>
+          </div>
+          <div id="kpiTotalPr" class="text-xl sm:text-2xl font-extrabold text-slate-900">0</div>
+          <div class="text-[11px] text-slate-400 mt-1">Nomor PR unik (Komersial)</div>
         </div>
-        <div id="kpiTotalPo" class="text-xl sm:text-2xl font-extrabold text-slate-900">0</div>
-        <div class="text-[11px] text-slate-400 mt-1">Nomor PO unik</div>
-      </div>
 
-      <div class="card-surface kpi-card p-4">
-        <div class="flex items-center justify-between text-xs font-semibold text-slate-500 mb-2">
-          <span>Total Pembelian</span>
-          <span class="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-xs font-bold">BELI</span>
+        <div class="card-surface kpi-card p-4">
+          <div class="flex items-center justify-between text-xs font-semibold text-slate-500 mb-2">
+            <span>Total PO</span>
+            <span class="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-bold">PO</span>
+          </div>
+          <div id="kpiTotalPo" class="text-xl sm:text-2xl font-extrabold text-slate-900">0</div>
+          <div class="text-[11px] text-slate-400 mt-1">Nomor PO unik (Komersial)</div>
         </div>
-        <div id="kpiTotalPembelian" class="text-base sm:text-lg font-extrabold text-slate-900 truncate">Rp 0</div>
-        <div class="text-[11px] text-slate-400 mt-1">Total beli (HPP)</div>
-      </div>
 
-      <div class="card-surface kpi-card p-4">
-        <div class="flex items-center justify-between text-xs font-semibold text-slate-500 mb-2">
-          <span>Total Penjualan</span>
-          <span class="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center text-xs font-bold">JUAL</span>
+        <div class="card-surface kpi-card p-4">
+          <div class="flex items-center justify-between text-xs font-semibold text-slate-500 mb-2">
+            <span>Total HPP (Excl. PPN)</span>
+            <span class="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-xs font-bold">HPP</span>
+          </div>
+          <div id="kpiTotalPembelian" class="text-base sm:text-lg font-extrabold text-slate-900 truncate">Rp 0</div>
+          <div class="text-[11px] text-slate-400 mt-1">Total beli komersial excl. PPN</div>
         </div>
-        <div id="kpiTotalPenjualan" class="text-base sm:text-lg font-extrabold text-slate-900 truncate">Rp 0</div>
-        <div class="text-[11px] text-slate-400 mt-1">Total harga jual</div>
-      </div>
 
-      <div class="card-surface kpi-card p-4">
-        <div class="flex items-center justify-between text-xs font-semibold text-slate-500 mb-2">
-          <span>Outstanding</span>
-          <span class="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center text-xs font-bold">OUT</span>
+        <div class="card-surface kpi-card p-4">
+          <div class="flex items-center justify-between text-xs font-semibold text-slate-500 mb-2">
+            <span>Penjualan (Excl. PPN)</span>
+            <span class="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center text-xs font-bold">JUAL</span>
+          </div>
+          <div id="kpiTotalPenjualan" class="text-base sm:text-lg font-extrabold text-slate-900 truncate">Rp 0</div>
+          <div class="text-[11px] text-slate-400 mt-1">Revenue komersial excl. PPN</div>
         </div>
-        <div id="kpiOutstanding" class="text-base sm:text-lg font-extrabold text-rose-700 truncate">Rp 0</div>
-        <div id="subOutstandingRows" class="text-[11px] text-slate-400 mt-1">Nilai Sisa • 0 baris</div>
-      </div>
 
-      <div class="card-surface kpi-card p-4">
-        <div class="flex items-center justify-between text-xs font-semibold text-slate-500 mb-2">
-          <span>Margin</span>
-          <span class="w-7 h-7 rounded-lg bg-violet-50 text-violet-600 flex items-center justify-center text-xs font-bold">%</span>
+        <div class="card-surface kpi-card p-4">
+          <div class="flex items-center justify-between text-xs font-semibold text-slate-500 mb-2">
+            <span>Outstanding</span>
+            <span class="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center text-xs font-bold">OUT</span>
+          </div>
+          <div id="kpiOutstanding" class="text-base sm:text-lg font-extrabold text-rose-700 truncate">Rp 0</div>
+          <div id="subOutstandingRows" class="text-[11px] text-slate-400 mt-1">Nilai Sisa • 0 baris</div>
         </div>
-        <div id="kpiMargin" class="text-base sm:text-lg font-extrabold text-blue-700 truncate">Rp 0</div>
-        <div id="subMarginPct" class="text-[11px] text-slate-400 mt-1">0,00% dari penjualan</div>
+
+        <div class="card-surface kpi-card p-4">
+          <div class="flex items-center justify-between text-xs font-semibold text-slate-500 mb-2">
+            <span>Margin Bersih</span>
+            <span class="w-7 h-7 rounded-lg bg-violet-50 text-violet-600 flex items-center justify-center text-xs font-bold">%</span>
+          </div>
+          <div id="kpiMargin" class="text-base sm:text-lg font-extrabold text-blue-700 truncate">Rp 0</div>
+          <div id="subMarginPct" class="text-[11px] text-slate-400 mt-1">0,00% dari penjualan excl. PPN</div>
+        </div>
       </div>
     </section>
 
@@ -206,8 +217,8 @@
       <div class="card-surface p-4 sm:p-5 lg:col-span-7 flex flex-col justify-between">
         <div class="flex items-start justify-between gap-2 mb-3">
           <div>
-            <h2 class="text-base sm:text-lg font-bold text-slate-900">Tren Pembelian per Bulan</h2>
-            <p class="text-xs text-slate-500">Pergerakan nilai pembelian pada data terfilter</p>
+            <h2 class="text-base sm:text-lg font-bold text-slate-900">Tren HPP & Penjualan Komersial per Bulan</h2>
+            <p class="text-xs text-slate-500">Pergerakan HPP & Penjualan Exclude PPN (non-internal, non-cancel/pending)</p>
           </div>
           <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-100 shrink-0">
             ● Trend
@@ -223,7 +234,7 @@
         <div class="flex items-start justify-between gap-2 mb-3">
           <div>
             <h2 class="text-base sm:text-lg font-bold text-slate-900">Realisasi vs Outstanding</h2>
-            <p class="text-xs text-slate-500">Komposisi nilai yang sudah terealisasi dan masih outstanding</p>
+            <p class="text-xs text-slate-500">Komposisi HPP komersial yang sudah terealisasi vs outstanding</p>
           </div>
           <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-100 shrink-0">
             ● Progress
@@ -261,14 +272,14 @@
               </div>
               <div class="rounded-xl border border-slate-200 bg-white p-2.5">
                 <div class="text-[10px] font-semibold text-slate-400">Persentase Margin</div>
-                <div id="metricPersentaseMargin" class="text-sm font-extrabold text-slate-900 mt-0.5">0,00%</div>
+                <div id="metricPersentaseMargin" class="text-sm font-extrabold text-blue-700 mt-0.5">0,00%</div>
               </div>
             </div>
           </div>
         </div>
 
         <div class="mt-3 pt-2.5 border-t border-slate-100 rounded-xl bg-slate-50 px-3.5 py-2 text-center">
-          <div class="text-[11px] text-slate-500 font-medium">Total Pembelian</div>
+          <div class="text-[11px] text-slate-500 font-medium">Total HPP Komersial (Excl. PPN)</div>
           <div id="valTotalPembelianDonut" class="text-sm font-extrabold text-slate-900">Rp 0</div>
         </div>
       </div>
@@ -280,8 +291,8 @@
       <div class="card-surface p-4 sm:p-5 lg:col-span-6 flex flex-col justify-between">
         <div class="flex items-start justify-between gap-2 mb-3">
           <div>
-            <h2 class="text-base sm:text-lg font-bold text-slate-900">Status PO</h2>
-            <p class="text-xs text-slate-500">Distribusi jumlah dan nilai PO berdasarkan progres</p>
+            <h2 class="text-base sm:text-lg font-bold text-slate-900">Status PO (Komersial)</h2>
+            <p class="text-xs text-slate-500">Distribusi jumlah dan nilai HPP PO berdasarkan progres</p>
           </div>
           <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-100 shrink-0">
             ● PO Status
@@ -304,7 +315,7 @@
                   <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
                   Complete
                 </div>
-                <div id="subPoComplete" class="text-[11px] text-slate-400 mt-0.5">0 PO • 0,0%</div>
+                <div id="subPoComplete" class="text-[11px] text-slate-400 mt-0.5">0 baris • 0,0%</div>
               </div>
               <div id="valPoComplete" class="text-xs sm:text-sm font-extrabold text-slate-900 text-right">Rp 0</div>
             </div>
@@ -315,7 +326,7 @@
                   <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
                   Partial
                 </div>
-                <div id="subPoPartial" class="text-[11px] text-slate-400 mt-0.5">0 PO • 0,0%</div>
+                <div id="subPoPartial" class="text-[11px] text-slate-400 mt-0.5">0 baris • 0,0%</div>
               </div>
               <div id="valPoPartial" class="text-xs sm:text-sm font-extrabold text-slate-900 text-right">Rp 0</div>
             </div>
@@ -326,7 +337,7 @@
                   <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
                   Open
                 </div>
-                <div id="subPoOpen" class="text-[11px] text-slate-400 mt-0.5">0 PO • 0,0%</div>
+                <div id="subPoOpen" class="text-[11px] text-slate-400 mt-0.5">0 baris • 0,0%</div>
               </div>
               <div id="valPoOpen" class="text-xs sm:text-sm font-extrabold text-slate-900 text-right">Rp 0</div>
             </div>
@@ -338,8 +349,8 @@
       <div class="card-surface p-4 sm:p-5 lg:col-span-6 flex flex-col justify-between">
         <div class="flex items-start justify-between gap-2 mb-3">
           <div>
-            <h2 class="text-base sm:text-lg font-bold text-slate-900">Pembelian per Kategori</h2>
-            <p class="text-xs text-slate-500">Nominal dan persentase kontribusi setiap kategori</p>
+            <h2 class="text-base sm:text-lg font-bold text-slate-900">HPP & Margin per Kategori (Komersial)</h2>
+            <p class="text-xs text-slate-500">Nominal HPP Exclude PPN dan margin tiap kategori komersial</p>
           </div>
           <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-100 shrink-0">
             ● Category
@@ -349,7 +360,7 @@
         <div id="kategoriBarList" class="space-y-3.5 my-auto py-1"></div>
 
         <div class="mt-3 pt-2 border-t border-slate-100 flex justify-between text-[11px] text-slate-400">
-          <span>Kontribusi nilai beli per kategori</span>
+          <span>Kontribusi HPP komersial per kategori</span>
           <span id="kategoriTotalLabel" class="font-semibold text-slate-600">Rp 0</span>
         </div>
       </div>
@@ -359,8 +370,8 @@
     <section class="card-surface p-4 sm:p-5 space-y-4">
       <div class="flex items-start justify-between gap-2">
         <div>
-          <h2 class="text-base sm:text-lg font-bold text-slate-900">Outstanding Berdasarkan Status BPV</h2>
-          <p class="text-xs text-slate-500">Pembagian Nilai Sisa berdasarkan isi kolom BPV / pembayaran</p>
+          <h2 class="text-base sm:text-lg font-bold text-slate-900">Outstanding Berdasarkan Status BPV (Komersial)</h2>
+          <p class="text-xs text-slate-500">Pembagian Nilai Sisa HPP Exclude PPN berdasarkan status BPV / pembayaran</p>
         </div>
         <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-100 shrink-0">
           ● BPV Status
@@ -376,17 +387,73 @@
       </div>
 
       <div class="pt-2 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-[11px] text-slate-400">
-        <span>Seluruh outstanding terbagi berdasarkan status pembayaran / BPV.</span>
+        <span>Seluruh outstanding komersial terbagi berdasarkan status pembayaran / BPV.</span>
         <span id="bpvTotalOutstandingLabel" class="font-semibold text-slate-600">Total Outstanding: Rp 0</span>
       </div>
     </section>
 
-    <!-- TRANSACTION TABLE & CSV EXPORT -->
+    <!-- SECTION TRANSAKSI INTERNAL TERPISAH (GA SIBIMA, AMIN, GA AMIIN) -->
+    <section class="card-surface p-4 sm:p-5 space-y-4 border-l-4 border-l-amber-500">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div>
+          <div class="flex items-center gap-2">
+            <h2 class="text-base sm:text-lg font-bold text-slate-900">Monitoring Transaksi Internal (GA SIBIMA, AMIN, GA AMIIN)</h2>
+            <span class="px-2.5 py-0.5 text-[11px] font-semibold rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+              Terpisah dari Margin
+            </span>
+          </div>
+          <p class="text-xs text-slate-500 mt-0.5">
+            Dipisahkan dari metrik komersial utama untuk memantau progres PR, PO, BPV, dan penerimaan barang internal
+          </p>
+        </div>
+        <span id="internalRowCount" class="text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full w-fit">
+          0 baris internal
+        </span>
+      </div>
+
+      <!-- Mini KPI Internal -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+          <div class="text-[11px] font-semibold text-slate-500">PR Internal</div>
+          <div id="intTotalPr" class="text-lg font-extrabold text-slate-900 mt-0.5">0</div>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+          <div class="text-[11px] font-semibold text-slate-500">PO Internal</div>
+          <div id="intTotalPo" class="text-lg font-extrabold text-slate-900 mt-0.5">0</div>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+          <div class="text-[11px] font-semibold text-slate-500">Nilai Beli Internal</div>
+          <div id="intTotalBeli" class="text-sm font-extrabold text-slate-900 mt-0.5 truncate">Rp 0</div>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+          <div class="text-[11px] font-semibold text-slate-500">Sudah Diterima</div>
+          <div id="intCompleteCount" class="text-lg font-extrabold text-emerald-700 mt-0.5">0</div>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+          <div class="text-[11px] font-semibold text-slate-500">Proses / Open</div>
+          <div id="intOpenCount" class="text-lg font-extrabold text-amber-700 mt-0.5">0</div>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+          <div class="text-[11px] font-semibold text-slate-500">Belum BPV / Belum Lunas</div>
+          <div id="intPendingBpvCount" class="text-lg font-extrabold text-rose-700 mt-0.5">0</div>
+        </div>
+      </div>
+
+      <!-- Tabel Transaksi Internal -->
+      <div class="table-wrap overflow-x-auto border border-slate-200 rounded-xl max-h-[300px]">
+        <table class="min-w-full text-left text-xs border-collapse">
+          <thead id="theadInternal" class="bg-amber-50/80 text-slate-700 font-semibold sticky top-0 z-10"></thead>
+          <tbody id="tbodyInternal" class="divide-y divide-slate-100 bg-white text-slate-700"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TRANSACTION TABLE & CSV EXPORT (KOMERSIAL) -->
     <section class="card-surface p-4 sm:p-5 space-y-3">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
-          <h2 class="text-base sm:text-lg font-bold text-slate-900">Detail Transaksi Order & Procurement</h2>
-          <p class="text-xs text-slate-500">Data terfilter yang dapat diekspor langsung ke CSV</p>
+          <h2 class="text-base sm:text-lg font-bold text-slate-900">Detail Transaksi Komersial Eksternal</h2>
+          <p class="text-xs text-slate-500">Menampilkan HPP Exclude PPN, Penjualan Exclude PPN, Margin, dan status realisasi</p>
         </div>
         <span id="tableRowCount" class="text-xs font-semibold text-slate-600 bg-slate-100 px-3 py-1 rounded-full w-fit">
           0 baris ditampilkan
@@ -405,28 +472,32 @@
 
   <script>
     // =========================================================================
-    // 1. KONFIGURASI GOOGLE SHEETS & FALLBACK DATA SAMPEL
+    // 1. KONFIGURASI GOOGLE SHEETS REAL-TIME (AUTO-SYNC TIAP 60 DETIK)
     // =========================================================================
+    const SHEET_ID = "18isSUeBYGiM2xuhV8QsXP57_AOotJ07vu1dvd5i62GI";
     const SHEET_URLS = {
-      rfq: "https://docs.google.com/spreadsheets/d/18isSUeBYGiM2xuhV8QsXP57_AOotJ07vu1dvd5i62GI/export?format=csv&gid=1100229590",
-      order: "https://docs.google.com/spreadsheets/d/18isSUeBYGiM2xuhV8QsXP57_AOotJ07vu1dvd5i62GI/export?format=csv&gid=467075902"
+      rfq: `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=1100229590`,
+      order: `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=467075902`
     };
+    const AUTO_REFRESH_MS = 60000; // Refresh otomatis setiap 60 detik supaya real-time
+
+    // Kata kunci untuk memisahkan transaksi internal (GA SIBIMA, AMIN, GA AMIIN)
+    const INTERNAL_KEYWORDS = ["GA SIBIMA", "AMIN", "GA AMIIN", "GA AMIN", "INTERNAL"];
 
     const SAMPLE_RFQ_ROWS = [
       { "TGL RFQ": "2026-07-09", "KATEGORI": "PROYEK", "CUSTOMER": "PT. ASRI KARYA LESTARI", "ITEM": "UPS Rackmount 3000VA", "QTY": 2, "STATUS": "COMPLETE", "NO SQ": "SIBSQ26070001" },
       { "TGL RFQ": "2026-08-14", "KATEGORI": "FULL PAYMENT", "CUSTOMER": "PT. SIBIMA TEKNOLOGI NUSANTARA", "ITEM": "Server Blade Node Gen11", "QTY": 1, "STATUS": "COMPLETE", "NO SQ": "SIBSQ26080002" },
-      { "TGL RFQ": "2026-09-21", "KATEGORI": "KONSINYASI", "CUSTOMER": "PT. OCEAN LINK RESOURCES", "ITEM": "Switch Managed 48-Port SFP+", "QTY": 3, "STATUS": "PENDING", "NO SQ": "SIBSQ26090003" },
-      { "TGL RFQ": "2026-10-12", "KATEGORI": "REGULER", "CUSTOMER": "PT. SIBIMA KARYA MANDIRI", "ITEM": "Toner Printer LaserJet Hitam", "QTY": 8, "STATUS": "COMPLETE", "NO SQ": "SIBSQ26100004" },
-      { "TGL RFQ": "2026-11-05", "KATEGORI": "PROYEK", "CUSTOMER": "PT. AGRO MINA INTI NUSANTARA", "ITEM": "Pompa Air Celup 2 HP", "QTY": 4, "STATUS": "PENDING", "NO SQ": "SIBSQ26110005" }
+      { "TGL RFQ": "2026-09-21", "KATEGORI": "KONSINYASI", "CUSTOMER": "PT. OCEAN LINK RESOURCES", "ITEM": "Switch Managed 48-Port SFP+", "QTY": 3, "STATUS": "PENDING", "NO SQ": "SIBSQ26090003" }
     ];
 
     const SAMPLE_ORDER_ROWS = [
-      { "TGL PO": "2026-06-15", "KATEGORI": "PROYEK", "CUSTOMER": "PT. ASRI KARYA LESTARI", "NO PR": "PR-2606-01", "NO PO": "PO-2606-01", "NO SQ": "SIBSQ26060001", "NO BPV": "BPV-01", "STATUS BPV": "Sudah Bayar Lunas", "ITEM": "Panel Distribusi Utama", "QTY": 2, "VENDOR": "PT DAYA SENTOSA UTAMA", "TOTAL HARGA BELI": 42000000, "TOTAL HARGA JUAL": 49500000, "STATUS": "SUDAH DITERIMA" },
-      { "TGL PO": "2026-07-09", "KATEGORI": "FULL PAYMENT", "CUSTOMER": "PT. SIBIMA TEKNOLOGI NUSANTARA", "NO PR": "PR-2607-02", "NO PO": "PO-2607-02", "NO SQ": "SIBSQ26070001", "NO BPV": "BPV-02", "STATUS BPV": "Sudah Bayar Lunas", "ITEM": "UPS Rackmount 3000VA", "QTY": 2, "VENDOR": "PT SOLUSI SERVER INDONESIA", "TOTAL HARGA BELI": 36500000, "TOTAL HARGA JUAL": 43800000, "STATUS": "SUDAH DITERIMA" },
-      { "TGL PO": "2026-08-18", "KATEGORI": "KONSINYASI", "CUSTOMER": "PT. OCEAN LINK RESOURCES", "NO PR": "PR-2608-03", "NO PO": "PO-2608-03", "NO SQ": "SIBSQ26080002", "NO BPV": "BPV-03", "STATUS BPV": "Hutang", "ITEM": "Switch Managed 48-Port SFP+", "QTY": 3, "VENDOR": "PT MITRA JARINGAN PRIMA", "TOTAL HARGA BELI": 54000000, "TOTAL HARGA JUAL": 63500000, "STATUS": "DALAM PENGIRIMAN" },
-      { "TGL PO": "2026-09-22", "KATEGORI": "REGULER", "CUSTOMER": "PT. SIBIMA KARYA MANDIRI", "NO PR": "PR-2609-04", "NO PO": "PO-2609-04", "NO SQ": "SIBSQ26090003", "NO BPV": "", "STATUS BPV": "Belum BPV", "ITEM": "Toner Printer LaserJet Hitam", "QTY": 8, "VENDOR": "CV MITRA NIAGA ABADI", "TOTAL HARGA BELI": 18400000, "TOTAL HARGA JUAL": 22100000, "STATUS": "PROSES VENDOR" },
-      { "TGL PO": "2026-10-15", "KATEGORI": "PROYEK", "CUSTOMER": "PT. WAHANA KARYA MANDIRI", "NO PR": "PR-2610-05", "NO PO": "PO-2610-05", "NO SQ": "SIBSQ26100004", "NO BPV": "BPV-05", "STATUS BPV": "Sudah Bayar DP", "ITEM": "CCTV Bullet 4MP IP PoE", "QTY": 12, "VENDOR": "PT DAYA SENTOSA UTAMA", "TOTAL HARGA BELI": 64000000, "TOTAL HARGA JUAL": 76000000, "STATUS": "PROSES VENDOR" },
-      { "TGL PO": "2026-11-10", "KATEGORI": "FULL PAYMENT", "CUSTOMER": "PT. AGRO MINA INTI NUSANTARA", "NO PR": "PR-2611-06", "NO PO": "PO-2611-06", "NO SQ": "SIBSQ26110005", "NO BPV": "BPV-06", "STATUS BPV": "Belum Dibayar", "ITEM": "Pompa Air Celup 2 HP", "QTY": 4, "VENDOR": "PT TEKNIK AGRO MANDIRI", "TOTAL HARGA BELI": 29500000, "TOTAL HARGA JUAL": 35200000, "STATUS": "PENDING" }
+      { "TGL PO": "2026-06-15", "KATEGORI": "PROYEK", "CUSTOMER": "PT. ASRI KARYA LESTARI", "NO PR": "PR-2606-01", "NO PO": "PO-2606-01", "NO SQ": "SIBSQ26060001", "NO BPV": "BPV-01", "STATUS BPV": "Sudah Bayar Lunas", "ITEM": "Panel Distribusi Utama", "QTY": 2, "VENDOR": "PT DAYA SENTOSA UTAMA", "HPP EXCLUDE PPN": 42000000, "PENJUALAN EXCLUDE PPN": 49500000, "STATUS": "SUDAH DITERIMA" },
+      { "TGL PO": "2026-07-09", "KATEGORI": "FULL PAYMENT", "CUSTOMER": "PT. SIBIMA TEKNOLOGI NUSANTARA", "NO PR": "PR-2607-02", "NO PO": "PO-2607-02", "NO SQ": "SIBSQ26070001", "NO BPV": "BPV-02", "STATUS BPV": "Sudah Bayar Lunas", "ITEM": "UPS Rackmount 3000VA", "QTY": 2, "VENDOR": "PT SOLUSI SERVER INDONESIA", "HPP EXCLUDE PPN": 36500000, "PENJUALAN EXCLUDE PPN": 43800000, "STATUS": "SUDAH DITERIMA" },
+      { "TGL PO": "2026-08-18", "KATEGORI": "KONSINYASI", "CUSTOMER": "PT. OCEAN LINK RESOURCES", "NO PR": "PR-2608-03", "NO PO": "PO-2608-03", "NO SQ": "SIBSQ26080002", "NO BPV": "BPV-03", "STATUS BPV": "Hutang", "ITEM": "Switch Managed 48-Port SFP+", "QTY": 3, "VENDOR": "PT MITRA JARINGAN PRIMA", "HPP EXCLUDE PPN": 54000000, "PENJUALAN EXCLUDE PPN": 63500000, "STATUS": "DALAM PENGIRIMAN" },
+      { "TGL PO": "2026-09-22", "KATEGORI": "REGULER", "CUSTOMER": "PT. SIBIMA KARYA MANDIRI", "NO PR": "PR-2609-04", "NO PO": "PO-2609-04", "NO SQ": "SIBSQ26090003", "NO BPV": "", "STATUS BPV": "Belum BPV", "ITEM": "Toner Printer LaserJet Hitam", "QTY": 8, "VENDOR": "CV MITRA NIAGA ABADI", "HPP EXCLUDE PPN": 18400000, "PENJUALAN EXCLUDE PPN": 22100000, "STATUS": "PROSES VENDOR" },
+      { "TGL PO": "2026-10-15", "KATEGORI": "PROYEK", "CUSTOMER": "PT. WAHANA KARYA MANDIRI", "NO PR": "PR-2610-05", "NO PO": "PO-2610-05", "NO SQ": "SIBSQ26100004", "NO BPV": "BPV-05", "STATUS BPV": "Sudah Bayar DP", "ITEM": "CCTV Bullet 4MP IP PoE", "QTY": 12, "VENDOR": "PT DAYA SENTOSA UTAMA", "HPP EXCLUDE PPN": 64000000, "PENJUALAN EXCLUDE PPN": 76000000, "STATUS": "PROSES VENDOR" },
+      { "TGL PO": "2026-11-10", "KATEGORI": "FULL PAYMENT", "CUSTOMER": "PT. AGRO MINA INTI NUSANTARA", "NO PR": "PR-2611-06", "NO PO": "PO-2611-06", "NO SQ": "SIBSQ26110005", "NO BPV": "BPV-06", "STATUS BPV": "Belum Dibayar", "ITEM": "Pompa Air Celup 2 HP", "QTY": 4, "VENDOR": "PT TEKNIK AGRO MANDIRI", "HPP EXCLUDE PPN": 29500000, "PENJUALAN EXCLUDE PPN": 35200000, "STATUS": "PENDING" },
+      { "TGL PO": "2026-11-12", "KATEGORI": "GA SIBIMA", "CUSTOMER": "GA SIBIMA", "NO PR": "PR-INT-01", "NO PO": "PO-INT-01", "NO SQ": "-", "NO BPV": "BPV-INT-01", "STATUS BPV": "Sudah Bayar Lunas", "ITEM": "ATK & Kebutuhan Operasional Kantor", "QTY": 1, "VENDOR": "TOKO ATK MAKMUR", "HPP EXCLUDE PPN": 4500000, "PENJUALAN EXCLUDE PPN": 0, "STATUS": "SUDAH DITERIMA" }
     ];
 
     // =========================================================================
@@ -441,13 +512,16 @@
     const state = {
       rfqRows: [],
       orderRows: [],
-      filteredOrders: [],
+      filteredCommercialActive: [],
+      filteredCommercialExcluded: [],
+      filteredInternal: [],
       charts: {}
     };
 
     function formatRupiah(num) {
       const val = Number(num) || 0;
-      return "Rp " + Math.round(val).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+      const sign = val < 0 ? "-" : "";
+      return sign + "Rp " + Math.round(Math.abs(val)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
     }
 
     function formatCompactRupiah(num) {
@@ -514,6 +588,8 @@
       if (typeof val === "number") return Number.isFinite(val) ? val : 0;
       let s = String(val).replace(/rp|idr|\s+/gi, "").trim();
       if (!s || s === "-") return 0;
+      const isNeg = s.startsWith("-") || (s.startsWith("(") && s.endsWith(")"));
+      s = s.replace(/[()-]/g, "");
       if (s.includes(",") && s.includes(".")) {
         if (s.indexOf(".") < s.indexOf(",")) s = s.replace(/\./g, "").replace(",", ".");
         else s = s.replace(/,/g, "");
@@ -525,7 +601,8 @@
         s = s.replace(/\./g, "");
       }
       const n = parseFloat(s);
-      return Number.isFinite(n) ? n : 0;
+      if (!Number.isFinite(n)) return 0;
+      return isNeg ? -n : n;
     }
 
     function escapeHtml(str) {
@@ -548,7 +625,7 @@
     }
 
     // =========================================================================
-    // 3. CSV PARSER & SCHEMA DETECTOR
+    // 3. CSV PARSER & SCHEMA DETECTOR (PRIORITAS EXCLUDE PPN)
     // =========================================================================
     function parseCsvMatrix(csvText) {
       const rows = [];
@@ -566,8 +643,12 @@
         } else {
           if (ch === '"') inQuotes = true;
           else if (ch === ",") { row.push(cell); cell = ""; }
-          else if (ch === "\r" && next === "\n") { row.push(cell); rows.push(row); row = []; cell = ""; i++; }
-          else if (ch === "\n" || ch === "\r") { row.push(cell); rows.push(row); row = []; cell = ""; }
+          else if (ch === "
+" && next === "
+") { row.push(cell); rows.push(row); row = []; cell = ""; i++; }
+          else if (ch === "
+" || ch === "
+") { row.push(cell); rows.push(row); row = []; cell = ""; }
           else cell += ch;
         }
       }
@@ -609,8 +690,10 @@
     async function fetchSheetCsv(url, headerRowIndex) {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 9000);
+      // Tambahkan cache-buster timestamp agar selalu real-time dari Google Sheets
+      const liveUrl = `${url}&_ts=${Date.now()}`;
       try {
-        const res = await fetch(url, { signal: controller.signal, cache: "no-store" });
+        const res = await fetch(liveUrl, { signal: controller.signal, cache: "no-store" });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const text = await res.text();
         if (!text || text.trim().startsWith("<!DOCTYPE html") || text.trim().startsWith("<html")) {
@@ -645,16 +728,66 @@
         noBpv: findCol(cols, [c => c === "NO BPV", c => c.includes("NO BPV")]),
         item: findCol(cols, [c => c === "ITEM", c => c.includes("ITEM"), c => c.includes("BARANG")]),
         qty: findCol(cols, [c => c === "QTY", c => c.includes("QTY")]),
-        beli: findCol(cols, [c => c.includes("TOTAL HARGA BELI"), c => c.includes("HARGA BELI")]),
-        jual: findCol(cols, [c => c.includes("TOTAL HARGA JUAL"), c => c.includes("HARGA JUAL")]),
+        // Prioritas utama kolom Exclude PPN untuk HPP & Penjualan
+        hppExcl: findCol(cols, [
+          c => c.includes("HPP") && (c.includes("EXCL") || c.includes("EXL") || c.includes("NON PPN") || c.includes("TANPA PPN")),
+          c => c.includes("BELI") && (c.includes("EXCL") || c.includes("EXL") || c.includes("NON PPN")),
+          c => c === "HPP",
+          c => c.includes("TOTAL HARGA BELI"),
+          c => c.includes("HARGA BELI")
+        ]),
+        jualExcl: findCol(cols, [
+          c => c.includes("JUAL") && (c.includes("EXCL") || c.includes("EXL") || c.includes("NON PPN") || c.includes("TANPA PPN")),
+          c => c.includes("PENJUALAN") && (c.includes("EXCL") || c.includes("EXL") || c.includes("NON PPN")),
+          c => c.includes("TOTAL HARGA JUAL"),
+          c => c.includes("HARGA JUAL")
+        ]),
+        ppnFlag: findCol(cols, [c => c === "PPN", c => c.includes("STATUS PPN"), c => c.includes("PAJAK")]),
         tglGrn: findCol(cols, [c => c.includes("TGL GRN"), c => c.includes("GRN")]),
         tglTerima: findCol(cols, [c => c.includes("TGL CUST TERIMA"), c => c.includes("TGL TERIMA"), c => c.includes("TERIMA")])
       };
     }
 
     // =========================================================================
-    // 4. KLASIFIKASI STATUS PO & BPV
+    // 4. LOGIKA PEMISAHAN INTERNAL VS KOMERSIAL & PENGHITUNGAN MARGIN EXCL. PPN
     // =========================================================================
+    function isInternalTransaction(row, sc) {
+      const kat = sc.kategori ? String(row[sc.kategori] || "").toUpperCase().trim() : "";
+      const cust = sc.customer ? String(row[sc.customer] || "").toUpperCase().trim() : "";
+      const combined = `${kat} ${cust}`;
+      return INTERNAL_KEYWORDS.some(kw => {
+        if (kw === "AMIN") {
+          // Cocokkan AMIN sebagai kata utuh / GA AMIN / PT AMIN agar tidak salah tangkap kata lain
+          return / AMIN /.test(combined) || combined.includes("GA AMIN") || combined.includes("GA AMIIN");
+        }
+        return combined.includes(kw);
+      });
+    }
+
+    function isCancelledOrPending(row, sc) {
+      const st = sc.status ? String(row[sc.status] || "").toUpperCase().trim() : "";
+      return st.includes("CANCEL") || st.includes("BATAL") || st.includes("PENDING") || st.includes("HOLD");
+    }
+
+    function getRowHppExclPpn(row, sc) {
+      let val = sc.hppExcl ? parseCurrency(row[sc.hppExcl]) : 0;
+      // Jika nama kolom header belum eksplisit Exclude PPN dan ada indikator PPN include, normalisasi / 1.11
+      const colName = (sc.hppExcl || "").toUpperCase();
+      if (val > 0 && colName.includes("INCL")) {
+        val = val / 1.11;
+      }
+      return val;
+    }
+
+    function getRowPenjualanExclPpn(row, sc) {
+      let val = sc.jualExcl ? parseCurrency(row[sc.jualExcl]) : 0;
+      const colName = (sc.jualExcl || "").toUpperCase();
+      if (val > 0 && colName.includes("INCL")) {
+        val = val / 1.11;
+      }
+      return val;
+    }
+
     function classifyPoStatus(row, sc) {
       const st = sc.status ? String(row[sc.status] || "").toUpperCase().trim() : "";
       const hasGrn = sc.tglGrn ? hasValue(row[sc.tglGrn]) : false;
@@ -669,8 +802,7 @@
     }
 
     function isItemOutstanding(row, sc) {
-      const st = sc.status ? String(row[sc.status] || "").toUpperCase().trim() : "";
-      if (st.includes("CANCEL")) return false;
+      if (isCancelledOrPending(row, sc)) return false;
       return classifyPoStatus(row, sc) !== "COMPLETE";
     }
 
@@ -735,7 +867,7 @@
       const stPo = document.getElementById("filterStatusPo").value;
       const kw = document.getElementById("filterKeyword").value.trim().toLowerCase();
 
-      state.filteredOrders = state.orderRows.filter(row => {
+      const matching = state.orderRows.filter(row => {
         if (per !== "ALL" && sc.date) {
           const dt = parseDateSafe(row[sc.date]);
           if (!dt || getMonthKey(dt) !== per) return false;
@@ -749,6 +881,24 @@
         }
         return true;
       });
+
+      const commercialActive = [];
+      const commercialExcluded = [];
+      const internalRows = [];
+
+      matching.forEach(row => {
+        if (isInternalTransaction(row, sc)) {
+          internalRows.push(row);
+        } else if (isCancelledOrPending(row, sc)) {
+          commercialExcluded.push(row);
+        } else {
+          commercialActive.push(row);
+        }
+      });
+
+      state.filteredCommercialActive = commercialActive;
+      state.filteredCommercialExcluded = commercialExcluded;
+      state.filteredInternal = internalRows;
     }
 
     // =========================================================================
@@ -764,22 +914,26 @@
 
     function renderDashboard() {
       applyFilters();
-      const rows = state.filteredOrders;
+      const rows = state.filteredCommercialActive;
+      const excludedRows = state.filteredCommercialExcluded;
+      const internalRows = state.filteredInternal;
       const sc = getOrderSchema(state.orderRows);
 
       document.getElementById("syncCounts").textContent =
-        `${formatNumber(rows.length)} dari ${formatNumber(state.orderRows.length)} baris`;
+        `${formatNumber(rows.length)} komersial aktif • ${formatNumber(internalRows.length)} internal`;
+      document.getElementById("excludedInfoBadge").textContent =
+        `${formatNumber(excludedRows.length)} baris Cancel/Pending dikecualikan dari margin`;
 
-      // Unique PR & PO
+      // Unique PR & PO Komersial
       const prSet = new Set();
       const poSet = new Set();
-      let totalBeli = 0;
-      let totalJual = 0;
+      let totalHppExcl = 0;
+      let totalPenjualanExcl = 0;
       let totalOut = 0;
       let outRowCount = 0;
 
-      // Monthly trend map
-      const monthBeliMap = new Map();
+      // Monthly trend map (HPP & Penjualan Exclude PPN)
+      const monthTrendMap = new Map();
 
       // PO status breakdown
       const poStats = {
@@ -800,85 +954,109 @@
         if (sc.noPr && hasValue(r[sc.noPr])) prSet.add(String(r[sc.noPr]).trim());
         if (sc.noPo && hasValue(r[sc.noPo])) poSet.add(String(r[sc.noPo]).trim());
 
-        const beli = sc.beli ? parseCurrency(r[sc.beli]) : 0;
-        const jual = sc.jual ? parseCurrency(r[sc.jual]) : 0;
-        totalBeli += beli;
-        totalJual += jual;
+        const hpp = getRowHppExclPpn(r, sc);
+        const jual = getRowPenjualanExclPpn(r, sc);
+        totalHppExcl += hpp;
+        totalPenjualanExcl += jual;
 
         if (sc.date) {
           const dt = parseDateSafe(r[sc.date]);
           if (dt) {
             const mk = getMonthKey(dt);
-            monthBeliMap.set(mk, (monthBeliMap.get(mk) || 0) + beli);
+            if (!monthTrendMap.has(mk)) monthTrendMap.set(mk, { hpp: 0, jual: 0 });
+            const mEntry = monthTrendMap.get(mk);
+            mEntry.hpp += hpp;
+            mEntry.jual += jual;
           }
         }
 
         const poClass = classifyPoStatus(r, sc);
         poStats[poClass].count += 1;
-        poStats[poClass].value += beli;
+        poStats[poClass].value += hpp;
 
         const katName = sc.kategori && hasValue(r[sc.kategori]) ? String(r[sc.kategori]).trim().toUpperCase() : "LAINNYA";
-        katMap.set(katName, (katMap.get(katName) || 0) + beli);
+        if (!katMap.has(katName)) katMap.set(katName, { hpp: 0, jual: 0 });
+        const kEntry = katMap.get(katName);
+        kEntry.hpp += hpp;
+        kEntry.jual += jual;
 
         if (isItemOutstanding(r, sc)) {
-          totalOut += beli;
+          totalOut += hpp;
           outRowCount += 1;
           const bpvLbl = classifyBpvStatus(r, sc);
           if (!bpvMap.has(bpvLbl)) bpvMap.set(bpvLbl, { label: bpvLbl, value: 0, count: 0 });
           const entry = bpvMap.get(bpvLbl);
-          entry.value += beli;
+          entry.value += hpp;
           entry.count += 1;
         }
       });
 
-      const realisasi = Math.max(0, totalBeli - totalOut);
-      const margin = totalJual - totalBeli;
-      const marginPct = totalJual > 0 ? (margin / totalJual) * 100 : 0;
-      const progressRealisasiPct = totalBeli > 0 ? (realisasi / totalBeli) * 100 : 0;
-      const outPct = totalBeli > 0 ? (totalOut / totalBeli) * 100 : 0;
+      const realisasi = Math.max(0, totalHppExcl - totalOut);
+      // Margin presisi = Penjualan Exclude PPN - HPP Exclude PPN
+      const margin = totalPenjualanExcl - totalHppExcl;
+      const marginPct = totalPenjualanExcl > 0 ? (margin / totalPenjualanExcl) * 100 : 0;
+      const progressRealisasiPct = totalHppExcl > 0 ? (realisasi / totalHppExcl) * 100 : 0;
+      const outPct = totalHppExcl > 0 ? (totalOut / totalHppExcl) * 100 : 0;
 
       // Update KPI Cards
       document.getElementById("kpiTotalPr").textContent = formatNumber(prSet.size);
       document.getElementById("kpiTotalPo").textContent = formatNumber(poSet.size);
-      document.getElementById("kpiTotalPembelian").textContent = formatRupiah(totalBeli);
-      document.getElementById("kpiTotalPenjualan").textContent = formatRupiah(totalJual);
+      document.getElementById("kpiTotalPembelian").textContent = formatRupiah(totalHppExcl);
+      document.getElementById("kpiTotalPenjualan").textContent = formatRupiah(totalPenjualanExcl);
       document.getElementById("kpiOutstanding").textContent = formatRupiah(totalOut);
-      document.getElementById("subOutstandingRows").textContent = `Nilai Sisa • ${formatNumber(outRowCount)} baris`;
+      document.getElementById("subOutstandingRows").textContent = `Nilai Sisa HPP • ${formatNumber(outRowCount)} baris`;
       document.getElementById("kpiMargin").textContent = formatRupiah(margin);
-      document.getElementById("subMarginPct").textContent = `${marginPct.toFixed(2).replace(".", ",")}% dari penjualan`;
+      document.getElementById("kpiMargin").className =
+        `text-base sm:text-lg font-extrabold truncate ${margin >= 0 ? "text-blue-700" : "text-rose-700"}`;
+      document.getElementById("subMarginPct").textContent = `${marginPct.toFixed(2).replace(".", ",")}% dari penjualan excl. PPN`;
 
-      // 1. Tren Pembelian per Bulan (Smooth Area Line Chart)
-      const sortedMonths = [...monthBeliMap.keys()].sort();
+      // 1. Tren HPP & Penjualan per Bulan
+      const sortedMonths = [...monthTrendMap.keys()].sort();
       const trendLabels = sortedMonths.length ? sortedMonths.map(getMonthLabel) : ["Belum Ada Tanggal"];
-      const trendValues = sortedMonths.length ? sortedMonths.map(k => monthBeliMap.get(k)) : [0];
+      const trendHpp = sortedMonths.length ? sortedMonths.map(k => monthTrendMap.get(k).hpp) : [0];
+      const trendJual = sortedMonths.length ? sortedMonths.map(k => monthTrendMap.get(k).jual) : [0];
 
       upsertChart("trenBulan", "chartTrenBulan", {
         type: "line",
         data: {
           labels: trendLabels,
-          datasets: [{
-            label: "Pembelian",
-            data: trendValues,
-            borderColor: "#1d4ed8",
-            backgroundColor: "rgba(37, 99, 235, 0.12)",
-            borderWidth: 2.5,
-            fill: true,
-            tension: 0.4,
-            pointRadius: 4,
-            pointHoverRadius: 6,
-            pointBackgroundColor: "#ffffff",
-            pointBorderColor: "#1d4ed8",
-            pointBorderWidth: 2
-          }]
+          datasets: [
+            {
+              label: "Penjualan (Excl. PPN)",
+              data: trendJual,
+              borderColor: "#10b981",
+              backgroundColor: "rgba(16, 185, 129, 0.10)",
+              borderWidth: 2.5,
+              fill: true,
+              tension: 0.4,
+              pointRadius: 4,
+              pointBackgroundColor: "#ffffff",
+              pointBorderColor: "#10b981",
+              pointBorderWidth: 2
+            },
+            {
+              label: "HPP (Excl. PPN)",
+              data: trendHpp,
+              borderColor: "#1d4ed8",
+              backgroundColor: "rgba(37, 99, 235, 0.10)",
+              borderWidth: 2.5,
+              fill: true,
+              tension: 0.4,
+              pointRadius: 4,
+              pointBackgroundColor: "#ffffff",
+              pointBorderColor: "#1d4ed8",
+              pointBorderWidth: 2
+            }
+          ]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
-            legend: { display: false },
+            legend: { position: "top", labels: { boxWidth: 10, font: { size: 11 } } },
             tooltip: {
               callbacks: {
-                label: ctx => ` ${formatRupiah(ctx.parsed.y)}`
+                label: ctx => ` ${ctx.dataset.label}: ${formatRupiah(ctx.parsed.y)}`
               }
             }
           },
@@ -902,19 +1080,19 @@
 
       // 2. Realisasi vs Outstanding Donut + Breakdown
       document.getElementById("valRealisasi").textContent = formatRupiah(realisasi);
-      document.getElementById("pctRealisasi").textContent = `${progressRealisasiPct.toFixed(1).replace(".", ",")}% dari total`;
+      document.getElementById("pctRealisasi").textContent = `${progressRealisasiPct.toFixed(1).replace(".", ",")}% dari total HPP`;
       document.getElementById("valOutstandingDonut").textContent = formatRupiah(totalOut);
-      document.getElementById("pctOutstandingDonut").textContent = `${outPct.toFixed(1).replace(".", ",")}% dari total`;
+      document.getElementById("pctOutstandingDonut").textContent = `${outPct.toFixed(1).replace(".", ",")}% dari total HPP`;
       document.getElementById("metricProgressRealisasi").textContent = `${progressRealisasiPct.toFixed(2).replace(".", ",")}%`;
       document.getElementById("metricPersentaseMargin").textContent = `${marginPct.toFixed(2).replace(".", ",")}%`;
-      document.getElementById("valTotalPembelianDonut").textContent = formatRupiah(totalBeli);
+      document.getElementById("valTotalPembelianDonut").textContent = formatRupiah(totalHppExcl);
 
       upsertChart("realisasiDonut", "chartRealisasiDonut", {
         type: "doughnut",
         data: {
           labels: ["Realisasi", "Outstanding"],
           datasets: [{
-            data: totalBeli > 0 ? [realisasi, totalOut] : [1, 0],
+            data: totalHppExcl > 0 ? [realisasi, totalOut] : [1, 0],
             backgroundColor: ["#1d4ed8", "#10b981"],
             borderWidth: 0,
             hoverOffset: 4
@@ -978,33 +1156,38 @@
         }
       });
 
-      // 4. Pembelian per Kategori Horizontal Bar List
-      const katSorted = [...katMap.entries()].sort((a, b) => b[1] - a[1]);
+      // 4. HPP & Margin per Kategori Horizontal Bar List
+      const katSorted = [...katMap.entries()].sort((a, b) => b[1].hpp - a[1].hpp);
       const barColors = ["#1d4ed8", "#10b981", "#7c3aed", "#f59e0b", "#0ea5e9", "#ec4899"];
       const katListEl = document.getElementById("kategoriBarList");
-      document.getElementById("kategoriTotalLabel").textContent = formatRupiah(totalBeli);
+      document.getElementById("kategoriTotalLabel").textContent = formatRupiah(totalHppExcl);
 
       if (katSorted.length === 0) {
-        katListEl.innerHTML = `<div class="text-xs text-slate-400 text-center py-8">Tidak ada data kategori.</div>`;
+        katListEl.innerHTML = `<div class="text-xs text-slate-400 text-center py-8">Tidak ada data kategori komersial.</div>`;
       } else {
-        katListEl.innerHTML = katSorted.slice(0, 6).map(([name, val], idx) => {
-          const sharePct = totalBeli > 0 ? (val / totalBeli) * 100 : 0;
+        katListEl.innerHTML = katSorted.slice(0, 6).map(([name, obj], idx) => {
+          const sharePct = totalHppExcl > 0 ? (obj.hpp / totalHppExcl) * 100 : 0;
+          const catMargin = obj.jual - obj.hpp;
+          const catMarginPct = obj.jual > 0 ? (catMargin / obj.jual) * 100 : 0;
           const color = barColors[idx % barColors.length];
           return `
             <div class="space-y-1.5">
               <div class="flex items-center justify-between text-xs gap-2">
                 <span class="font-bold text-slate-800 truncate">${escapeHtml(name)}</span>
-                <span class="font-bold text-slate-700 shrink-0">${formatRupiah(val)} <span class="text-slate-400 font-medium">(${sharePct.toFixed(1).replace(".", ",")}%)</span></span>
+                <span class="font-bold text-slate-700 shrink-0">
+                  ${formatRupiah(obj.hpp)}
+                  <span class="text-blue-600 font-semibold">(Margin ${catMarginPct.toFixed(1).replace(".", ",")}%)</span>
+                </span>
               </div>
               <div class="w-full h-3.5 bg-slate-100 rounded-full overflow-hidden">
-                <div class="h-full rounded-full transition-all duration-300" style="width:${Math.max(val > 0 ? 3 : 0, Math.min(100, sharePct))}%; background-color:${color};"></div>
+                <div class="h-full rounded-full transition-all duration-300" style="width:${Math.max(obj.hpp > 0 ? 3 : 0, Math.min(100, sharePct))}%; background-color:${color};"></div>
               </div>
             </div>
           `;
         }).join("");
       }
 
-      // 5. Outstanding Berdasarkan Status BPV (Horizontal Bar + Breakdown Cards)
+      // 5. Outstanding Berdasarkan Status BPV
       const bpvEntries = [...bpvMap.values()];
       const bpvLabels = bpvEntries.map(x => x.label);
       const bpvValues = bpvEntries.map(x => x.value);
@@ -1022,7 +1205,7 @@
         data: {
           labels: bpvLabels,
           datasets: [{
-            label: "Nilai Outstanding",
+            label: "Nilai Outstanding HPP",
             data: bpvValues,
             backgroundColor: bpvColors,
             borderRadius: 6,
@@ -1079,8 +1262,68 @@
 
       document.getElementById("bpvTotalOutstandingLabel").textContent = `Total Outstanding: ${formatRupiah(totalOut)}`;
 
-      // 6. Transaction Table
+      // 6. Render Bagian Internal Terpisah (GA SIBIMA, AMIN, GA AMIIN)
+      renderInternalSection(internalRows, sc);
+
+      // 7. Render Tabel Transaksi Komersial
       renderTransactionTable(rows, sc);
+    }
+
+    function renderInternalSection(internalRows, sc) {
+      document.getElementById("internalRowCount").textContent = `${formatNumber(internalRows.length)} baris internal`;
+
+      const prInt = new Set();
+      const poInt = new Set();
+      let totalBeliInt = 0;
+      let completeInt = 0;
+      let openInt = 0;
+      let pendingBpvInt = 0;
+
+      internalRows.forEach(r => {
+        if (sc.noPr && hasValue(r[sc.noPr])) prInt.add(String(r[sc.noPr]).trim());
+        if (sc.noPo && hasValue(r[sc.noPo])) poInt.add(String(r[sc.noPo]).trim());
+        totalBeliInt += getRowHppExclPpn(r, sc);
+
+        if (classifyPoStatus(r, sc) === "COMPLETE") completeInt += 1;
+        else openInt += 1;
+
+        const bpvSt = classifyBpvStatus(r, sc);
+        if (bpvSt !== "Sudah Bayar Lunas") pendingBpvInt += 1;
+      });
+
+      document.getElementById("intTotalPr").textContent = formatNumber(prInt.size);
+      document.getElementById("intTotalPo").textContent = formatNumber(poInt.size);
+      document.getElementById("intTotalBeli").textContent = formatRupiah(totalBeliInt);
+      document.getElementById("intCompleteCount").textContent = formatNumber(completeInt);
+      document.getElementById("intOpenCount").textContent = formatNumber(openInt);
+      document.getElementById("intPendingBpvCount").textContent = formatNumber(pendingBpvInt);
+
+      const thead = document.getElementById("theadInternal");
+      const tbody = document.getElementById("tbodyInternal");
+
+      if (!internalRows.length) {
+        thead.innerHTML = "";
+        tbody.innerHTML = `<tr><td class="px-4 py-6 text-center text-slate-400">Tidak ada transaksi internal (GA SIBIMA, AMIN, GA AMIIN) pada filter saat ini.</td></tr>`;
+        return;
+      }
+
+      const cols = [
+        sc.date, sc.kategori, sc.customer, sc.noPr, sc.noPo,
+        sc.noBpv, sc.statusBpv, sc.vendor, sc.item, sc.qty,
+        sc.hppExcl, sc.status
+      ].filter(Boolean);
+
+      thead.innerHTML = `<tr>${cols.map(c => `<th class="px-3 py-2.5 border-b whitespace-nowrap">${escapeHtml(c)}</th>`).join("")}</tr>`;
+      tbody.innerHTML = internalRows.slice(0, 150).map(r => {
+        const cells = cols.map(c => {
+          let val = r[c];
+          const u = String(c).toUpperCase();
+          if (u.includes("TGL") || u.includes("TANGGAL")) val = formatTanggalIndo(val);
+          else if (c === sc.hppExcl) val = formatRupiah(getRowHppExclPpn(r, sc));
+          return `<td class="px-3 py-2 max-w-[230px] truncate" title="${escapeHtml(val)}">${escapeHtml(hasValue(val) ? val : "-")}</td>`;
+        }).join("");
+        return `<tr class="hover:bg-amber-50/40">${cells}</tr>`;
+      }).join("");
     }
 
     function renderTransactionTable(rows, sc) {
@@ -1090,33 +1333,52 @@
 
       if (!rows.length) {
         thead.innerHTML = "";
-        tbody.innerHTML = `<tr><td class="px-4 py-8 text-center text-slate-400">Tidak ada data transaksi sesuai filter.</td></tr>`;
+        tbody.innerHTML = `<tr><td class="px-4 py-8 text-center text-slate-400">Tidak ada data transaksi komersial sesuai filter.</td></tr>`;
         return;
       }
 
-      const preferred = [
+      const baseCols = [
         sc.date, sc.kategori, sc.customer, sc.noPr, sc.noPo, sc.noSq,
         sc.noBpv, sc.statusBpv, sc.vendor, sc.item, sc.qty,
-        sc.beli, sc.jual, sc.status
+        sc.hppExcl, sc.jualExcl
       ].filter(Boolean);
 
-      const allCols = Object.keys(rows[0]);
-      const cols = [...new Set([...preferred, ...allCols])].slice(0, 14);
+      const headerHtml = [
+        ...baseCols.map(c => `<th class="px-3 py-2.5 border-b whitespace-nowrap">${escapeHtml(c)}</th>`),
+        `<th class="px-3 py-2.5 border-b whitespace-nowrap text-blue-700">MARGIN (EXCL. PPN)</th>`,
+        `<th class="px-3 py-2.5 border-b whitespace-nowrap text-blue-700">MARGIN %</th>`,
+        sc.status ? `<th class="px-3 py-2.5 border-b whitespace-nowrap">${escapeHtml(sc.status)}</th>` : ""
+      ].join("");
 
-      thead.innerHTML = `<tr>${cols.map(c => `<th class="px-3 py-2.5 border-b whitespace-nowrap">${escapeHtml(c)}</th>`).join("")}</tr>`;
+      thead.innerHTML = `<tr>${headerHtml}</tr>`;
 
       tbody.innerHTML = rows.slice(0, 250).map(r => {
-        const cells = cols.map(c => {
+        const hpp = getRowHppExclPpn(r, sc);
+        const jual = getRowPenjualanExclPpn(r, sc);
+        const mrg = jual - hpp;
+        const mrgPct = jual > 0 ? (mrg / jual) * 100 : 0;
+
+        const cells = baseCols.map(c => {
           let val = r[c];
           const u = String(c).toUpperCase();
           if (u.includes("TGL") || u.includes("TANGGAL")) {
             val = formatTanggalIndo(val);
-          } else if (u.includes("HARGA") || u.includes("NILAI") || u.includes("MARGIN")) {
-            val = formatRupiah(parseCurrency(val));
+          } else if (c === sc.hppExcl) {
+            val = formatRupiah(hpp);
+          } else if (c === sc.jualExcl) {
+            val = formatRupiah(jual);
           }
           return `<td class="px-3 py-2 max-w-[240px] truncate" title="${escapeHtml(val)}">${escapeHtml(hasValue(val) ? val : "-")}</td>`;
-        }).join("");
-        return `<tr class="hover:bg-slate-50">${cells}</tr>`;
+        });
+
+        cells.push(`<td class="px-3 py-2 font-bold whitespace-nowrap ${mrg >= 0 ? "text-blue-700" : "text-rose-700"}">${formatRupiah(mrg)}</td>`);
+        cells.push(`<td class="px-3 py-2 font-semibold whitespace-nowrap text-slate-600">${mrgPct.toFixed(2).replace(".", ",")}%</td>`);
+        if (sc.status) {
+          const stVal = r[sc.status];
+          cells.push(`<td class="px-3 py-2 max-w-[180px] truncate">${escapeHtml(hasValue(stVal) ? stVal : "-")}</td>`);
+        }
+
+        return `<tr class="hover:bg-slate-50">${cells.join("")}</tr>`;
       }).join("");
     }
 
@@ -1175,30 +1437,39 @@
     }
 
     function exportFilteredCsv() {
-      const rows = state.filteredOrders;
+      const rows = state.filteredCommercialActive;
+      const sc = getOrderSchema(state.orderRows);
       if (!rows || !rows.length) {
-        showStatusBanner("Tidak ada data terfilter untuk diekspor.", "warn");
+        showStatusBanner("Tidak ada data komersial terfilter untuk diekspor.", "warn");
         return;
       }
-      const headers = Object.keys(rows[0]);
+      const headers = [...Object.keys(rows[0]), "MARGIN_EXCL_PPN", "MARGIN_PCT"];
       const lines = [
         headers.map(h => `"${String(h).replace(/"/g, '""')}"`).join(","),
-        ...rows.map(r => headers.map(h => `"${String(r[h] ?? "").replace(/"/g, '""')}"`).join(","))
+        ...rows.map(r => {
+          const hpp = getRowHppExclPpn(r, sc);
+          const jual = getRowPenjualanExclPpn(r, sc);
+          const mrg = jual - hpp;
+          const mrgPct = jual > 0 ? ((mrg / jual) * 100).toFixed(2) + "%" : "0.00%";
+          const enriched = { ...r, MARGIN_EXCL_PPN: Math.round(mrg), MARGIN_PCT: mrgPct };
+          return headers.map(h => `"${String(enriched[h] ?? "").replace(/"/g, '""')}"`).join(",");
+        })
       ];
-      const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const blob = new Blob(["﻿" + lines.join("
+")], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "SIBIMA_Purchasing_Terfilter.csv";
+      a.download = "SIBIMA_Purchasing_Komersial_Terfilter.csv";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      showStatusBanner("Berhasil mengekspor data terfilter ke CSV.", "success");
+      showStatusBanner("Berhasil mengekspor data komersial terfilter ke CSV.", "success");
     }
 
     // =========================================================================
-    // 8. EVENT LISTENERS
+    // 8. EVENT LISTENERS & AUTO-REFRESH REAL-TIME
     // =========================================================================
     ["filterPeriode", "filterKategori", "filterVendor", "filterStatusPo", "filterKeyword"].forEach(id => {
       document.getElementById(id).addEventListener("input", renderDashboard);
@@ -1221,7 +1492,9 @@
       document.getElementById("statusBox").classList.add("hidden");
     });
 
+    // Load awal + auto-polling real-time setiap 60 detik
     loadDashboardData(false);
+    setInterval(() => loadDashboardData(false), AUTO_REFRESH_MS);
   </script>
 </body>
 </html>
