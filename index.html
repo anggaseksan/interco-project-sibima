@@ -143,7 +143,7 @@
       </div>
     </section>
 
-    <!-- KPI CARDS ROW (KOMERSIAL EKSTERNAL - EXCLUDE PPN & EXCLUDE INTERNAL/CANCEL/PENDING) -->
+    <!-- KPI CARDS ROW -->
     <section class="space-y-2">
       <div class="flex flex-wrap items-center justify-between gap-2 px-1">
         <span class="text-xs font-bold uppercase tracking-wider text-slate-500">
@@ -211,9 +211,8 @@
       </div>
     </section>
 
-    <!-- ROW 1 CHARTS: TREN PEMBELIAN PER BULAN + REALISASI VS OUTSTANDING -->
+    <!-- ROW 1 CHARTS -->
     <section class="grid grid-cols-1 lg:grid-cols-12 gap-5">
-      <!-- Tren Pembelian per Bulan -->
       <div class="card-surface p-4 sm:p-5 lg:col-span-7 flex flex-col justify-between">
         <div class="flex items-start justify-between gap-2 mb-3">
           <div>
@@ -229,7 +228,6 @@
         </div>
       </div>
 
-      <!-- Realisasi vs Outstanding -->
       <div class="card-surface p-4 sm:p-5 lg:col-span-5 flex flex-col justify-between">
         <div class="flex items-start justify-between gap-2 mb-3">
           <div>
@@ -285,9 +283,8 @@
       </div>
     </section>
 
-    <!-- ROW 2 CHARTS: STATUS PO + PEMBELIAN PER KATEGORI -->
+    <!-- ROW 2 CHARTS -->
     <section class="grid grid-cols-1 lg:grid-cols-12 gap-5">
-      <!-- Status PO Donut -->
       <div class="card-surface p-4 sm:p-5 lg:col-span-6 flex flex-col justify-between">
         <div class="flex items-start justify-between gap-2 mb-3">
           <div>
@@ -345,7 +342,6 @@
         </div>
       </div>
 
-      <!-- Pembelian per Kategori Horizontal Bar -->
       <div class="card-surface p-4 sm:p-5 lg:col-span-6 flex flex-col justify-between">
         <div class="flex items-start justify-between gap-2 mb-3">
           <div>
@@ -366,7 +362,7 @@
       </div>
     </section>
 
-    <!-- ROW 3 CHART: OUTSTANDING BERDASARKAN STATUS BPV -->
+    <!-- ROW 3 CHART -->
     <section class="card-surface p-4 sm:p-5 space-y-4">
       <div class="flex items-start justify-between gap-2">
         <div>
@@ -392,7 +388,7 @@
       </div>
     </section>
 
-    <!-- SECTION TRANSAKSI INTERNAL TERPISAH (GA SIBIMA, AMIN, GA AMIIN) -->
+    <!-- SECTION TRANSAKSI INTERNAL TERPISAH -->
     <section class="card-surface p-4 sm:p-5 space-y-4 border-l-4 border-l-amber-500">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
@@ -411,7 +407,6 @@
         </span>
       </div>
 
-      <!-- Mini KPI Internal -->
       <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
           <div class="text-[11px] font-semibold text-slate-500">PR Internal</div>
@@ -439,7 +434,6 @@
         </div>
       </div>
 
-      <!-- Tabel Transaksi Internal -->
       <div class="table-wrap overflow-x-auto border border-slate-200 rounded-xl max-h-[300px]">
         <table class="min-w-full text-left text-xs border-collapse">
           <thead id="theadInternal" class="bg-amber-50/80 text-slate-700 font-semibold sticky top-0 z-10"></thead>
@@ -471,17 +465,12 @@
   </div>
 
   <script>
-    // =========================================================================
-    // 1. KONFIGURASI GOOGLE SHEETS REAL-TIME (AUTO-SYNC TIAP 60 DETIK)
-    // =========================================================================
     const SHEET_ID = "18isSUeBYGiM2xuhV8QsXP57_AOotJ07vu1dvd5i62GI";
     const SHEET_URLS = {
       rfq: `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=1100229590`,
       order: `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=467075902`
     };
-    const AUTO_REFRESH_MS = 60000; // Refresh otomatis setiap 60 detik supaya real-time
-
-    // Kata kunci untuk memisahkan transaksi internal (GA SIBIMA, AMIN, GA AMIIN)
+    const AUTO_REFRESH_MS = 60000;
     const INTERNAL_KEYWORDS = ["GA SIBIMA", "AMIN", "GA AMIIN", "GA AMIN", "INTERNAL"];
 
     const SAMPLE_RFQ_ROWS = [
@@ -500,9 +489,6 @@
       { "TGL PO": "2026-11-12", "KATEGORI": "GA SIBIMA", "CUSTOMER": "GA SIBIMA", "NO PR": "PR-INT-01", "NO PO": "PO-INT-01", "NO SQ": "-", "NO BPV": "BPV-INT-01", "STATUS BPV": "Sudah Bayar Lunas", "ITEM": "ATK & Kebutuhan Operasional Kantor", "QTY": 1, "VENDOR": "TOKO ATK MAKMUR", "HPP EXCLUDE PPN": 4500000, "PENJUALAN EXCLUDE PPN": 0, "STATUS": "SUDAH DITERIMA" }
     ];
 
-    // =========================================================================
-    // 2. FORMATTER & PARSER UTILITAS
-    // =========================================================================
     const BULAN_ID = [
       "Januari", "Februari", "Maret", "April", "Mei", "Juni",
       "Juli", "Agustus", "September", "Oktober", "November", "Desember"
@@ -624,9 +610,6 @@
       box.classList.remove("hidden");
     }
 
-    // =========================================================================
-    // 3. CSV PARSER & SCHEMA DETECTOR (PRIORITAS EXCLUDE PPN)
-    // =========================================================================
     function parseCsvMatrix(csvText) {
       const rows = [];
       let row = [];
@@ -643,12 +626,8 @@
         } else {
           if (ch === '"') inQuotes = true;
           else if (ch === ",") { row.push(cell); cell = ""; }
-          else if (ch === "
-" && next === "
-") { row.push(cell); rows.push(row); row = []; cell = ""; i++; }
-          else if (ch === "
-" || ch === "
-") { row.push(cell); rows.push(row); row = []; cell = ""; }
+          else if (ch === "\r" && next === "\n") { row.push(cell); rows.push(row); row = []; cell = ""; i++; }
+          else if (ch === "\n" || ch === "\r") { row.push(cell); rows.push(row); row = []; cell = ""; }
           else cell += ch;
         }
       }
@@ -690,7 +669,6 @@
     async function fetchSheetCsv(url, headerRowIndex) {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 9000);
-      // Tambahkan cache-buster timestamp agar selalu real-time dari Google Sheets
       const liveUrl = `${url}&_ts=${Date.now()}`;
       try {
         const res = await fetch(liveUrl, { signal: controller.signal, cache: "no-store" });
@@ -728,7 +706,6 @@
         noBpv: findCol(cols, [c => c === "NO BPV", c => c.includes("NO BPV")]),
         item: findCol(cols, [c => c === "ITEM", c => c.includes("ITEM"), c => c.includes("BARANG")]),
         qty: findCol(cols, [c => c === "QTY", c => c.includes("QTY")]),
-        // Prioritas utama kolom Exclude PPN untuk HPP & Penjualan
         hppExcl: findCol(cols, [
           c => c.includes("HPP") && (c.includes("EXCL") || c.includes("EXL") || c.includes("NON PPN") || c.includes("TANPA PPN")),
           c => c.includes("BELI") && (c.includes("EXCL") || c.includes("EXL") || c.includes("NON PPN")),
@@ -748,17 +725,13 @@
       };
     }
 
-    // =========================================================================
-    // 4. LOGIKA PEMISAHAN INTERNAL VS KOMERSIAL & PENGHITUNGAN MARGIN EXCL. PPN
-    // =========================================================================
     function isInternalTransaction(row, sc) {
       const kat = sc.kategori ? String(row[sc.kategori] || "").toUpperCase().trim() : "";
       const cust = sc.customer ? String(row[sc.customer] || "").toUpperCase().trim() : "";
-      const combined = `${kat} ${cust}`;
+      const combined = ` ${kat} ${cust} `;
       return INTERNAL_KEYWORDS.some(kw => {
         if (kw === "AMIN") {
-          // Cocokkan AMIN sebagai kata utuh / GA AMIN / PT AMIN agar tidak salah tangkap kata lain
-          return / AMIN /.test(combined) || combined.includes("GA AMIN") || combined.includes("GA AMIIN");
+          return combined.includes(" AMIN ") || combined.includes("GA AMIN") || combined.includes("GA AMIIN");
         }
         return combined.includes(kw);
       });
@@ -771,7 +744,6 @@
 
     function getRowHppExclPpn(row, sc) {
       let val = sc.hppExcl ? parseCurrency(row[sc.hppExcl]) : 0;
-      // Jika nama kolom header belum eksplisit Exclude PPN dan ada indikator PPN include, normalisasi / 1.11
       const colName = (sc.hppExcl || "").toUpperCase();
       if (val > 0 && colName.includes("INCL")) {
         val = val / 1.11;
@@ -818,9 +790,6 @@
       return sc.statusBpv && hasValue(row[sc.statusBpv]) ? String(row[sc.statusBpv]).trim() : "Belum BPV";
     }
 
-    // =========================================================================
-    // 5. POPULATE FILTERS & FILTERING
-    // =========================================================================
     function populateFilters() {
       const sc = getOrderSchema(state.orderRows);
       const perSel = document.getElementById("filterPeriode");
@@ -901,9 +870,6 @@
       state.filteredInternal = internalRows;
     }
 
-    // =========================================================================
-    // 6. CHART RENDERING & DASHBOARD UPDATE
-    // =========================================================================
     function upsertChart(key, canvasId, config) {
       if (state.charts[key]) {
         state.charts[key].destroy();
@@ -924,7 +890,6 @@
       document.getElementById("excludedInfoBadge").textContent =
         `${formatNumber(excludedRows.length)} baris Cancel/Pending dikecualikan dari margin`;
 
-      // Unique PR & PO Komersial
       const prSet = new Set();
       const poSet = new Set();
       let totalHppExcl = 0;
@@ -932,20 +897,14 @@
       let totalOut = 0;
       let outRowCount = 0;
 
-      // Monthly trend map (HPP & Penjualan Exclude PPN)
       const monthTrendMap = new Map();
-
-      // PO status breakdown
       const poStats = {
         COMPLETE: { count: 0, value: 0 },
         PARTIAL: { count: 0, value: 0 },
         OPEN: { count: 0, value: 0 }
       };
 
-      // Category breakdown
       const katMap = new Map();
-
-      // BPV breakdown on outstanding items
       const bpvOrder = ["Hutang", "Sudah Bayar DP", "Sudah Bayar Lunas", "Belum Dibayar", "Belum BPV"];
       const bpvMap = new Map();
       bpvOrder.forEach(k => bpvMap.set(k, { label: k, value: 0, count: 0 }));
@@ -992,13 +951,11 @@
       });
 
       const realisasi = Math.max(0, totalHppExcl - totalOut);
-      // Margin presisi = Penjualan Exclude PPN - HPP Exclude PPN
       const margin = totalPenjualanExcl - totalHppExcl;
       const marginPct = totalPenjualanExcl > 0 ? (margin / totalPenjualanExcl) * 100 : 0;
       const progressRealisasiPct = totalHppExcl > 0 ? (realisasi / totalHppExcl) * 100 : 0;
       const outPct = totalHppExcl > 0 ? (totalOut / totalHppExcl) * 100 : 0;
 
-      // Update KPI Cards
       document.getElementById("kpiTotalPr").textContent = formatNumber(prSet.size);
       document.getElementById("kpiTotalPo").textContent = formatNumber(poSet.size);
       document.getElementById("kpiTotalPembelian").textContent = formatRupiah(totalHppExcl);
@@ -1010,7 +967,6 @@
         `text-base sm:text-lg font-extrabold truncate ${margin >= 0 ? "text-blue-700" : "text-rose-700"}`;
       document.getElementById("subMarginPct").textContent = `${marginPct.toFixed(2).replace(".", ",")}% dari penjualan excl. PPN`;
 
-      // 1. Tren HPP & Penjualan per Bulan
       const sortedMonths = [...monthTrendMap.keys()].sort();
       const trendLabels = sortedMonths.length ? sortedMonths.map(getMonthLabel) : ["Belum Ada Tanggal"];
       const trendHpp = sortedMonths.length ? sortedMonths.map(k => monthTrendMap.get(k).hpp) : [0];
@@ -1078,7 +1034,6 @@
         }
       });
 
-      // 2. Realisasi vs Outstanding Donut + Breakdown
       document.getElementById("valRealisasi").textContent = formatRupiah(realisasi);
       document.getElementById("pctRealisasi").textContent = `${progressRealisasiPct.toFixed(1).replace(".", ",")}% dari total HPP`;
       document.getElementById("valOutstandingDonut").textContent = formatRupiah(totalOut);
@@ -1113,7 +1068,6 @@
         }
       });
 
-      // 3. Status PO Donut + Summary Cards
       const totalRowsCount = rows.length || 1;
       document.getElementById("centerTotalPo").textContent = formatNumber(poSet.size || rows.length);
 
@@ -1156,7 +1110,6 @@
         }
       });
 
-      // 4. HPP & Margin per Kategori Horizontal Bar List
       const katSorted = [...katMap.entries()].sort((a, b) => b[1].hpp - a[1].hpp);
       const barColors = ["#1d4ed8", "#10b981", "#7c3aed", "#f59e0b", "#0ea5e9", "#ec4899"];
       const katListEl = document.getElementById("kategoriBarList");
@@ -1187,7 +1140,6 @@
         }).join("");
       }
 
-      // 5. Outstanding Berdasarkan Status BPV
       const bpvEntries = [...bpvMap.values()];
       const bpvLabels = bpvEntries.map(x => x.label);
       const bpvValues = bpvEntries.map(x => x.value);
@@ -1262,10 +1214,7 @@
 
       document.getElementById("bpvTotalOutstandingLabel").textContent = `Total Outstanding: ${formatRupiah(totalOut)}`;
 
-      // 6. Render Bagian Internal Terpisah (GA SIBIMA, AMIN, GA AMIIN)
       renderInternalSection(internalRows, sc);
-
-      // 7. Render Tabel Transaksi Komersial
       renderTransactionTable(rows, sc);
     }
 
@@ -1382,9 +1331,6 @@
       }).join("");
     }
 
-    // =========================================================================
-    // 7. DATA LOADING & CSV EXPORT
-    // =========================================================================
     async function loadDashboardData(showToast = false) {
       const icon = document.getElementById("refreshIcon");
       icon.classList.add("animate-spin");
@@ -1455,8 +1401,8 @@
           return headers.map(h => `"${String(enriched[h] ?? "").replace(/"/g, '""')}"`).join(",");
         })
       ];
-      const blob = new Blob(["﻿" + lines.join("
-")], { type: "text/csv;charset=utf-8;" });
+      const csvContent = "\uFEFF" + lines.join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -1468,9 +1414,6 @@
       showStatusBanner("Berhasil mengekspor data komersial terfilter ke CSV.", "success");
     }
 
-    // =========================================================================
-    // 8. EVENT LISTENERS & AUTO-REFRESH REAL-TIME
-    // =========================================================================
     ["filterPeriode", "filterKategori", "filterVendor", "filterStatusPo", "filterKeyword"].forEach(id => {
       document.getElementById(id).addEventListener("input", renderDashboard);
       document.getElementById(id).addEventListener("change", renderDashboard);
@@ -1492,7 +1435,6 @@
       document.getElementById("statusBox").classList.add("hidden");
     });
 
-    // Load awal + auto-polling real-time setiap 60 detik
     loadDashboardData(false);
     setInterval(() => loadDashboardData(false), AUTO_REFRESH_MS);
   </script>
