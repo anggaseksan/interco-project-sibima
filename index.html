@@ -98,7 +98,7 @@
 
     <!-- HORIZONTAL FILTER BAR -->
     <section class="card-surface p-4">
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3">
         <div>
           <label for="filterPeriode" class="block text-[11px] font-semibold text-slate-500 mb-1">Periode Bulan</label>
           <select id="filterPeriode" class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -116,6 +116,13 @@
         <div>
           <label for="filterVendor" class="block text-[11px] font-semibold text-slate-500 mb-1">Supplier / Vendor</label>
           <select id="filterVendor" class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="ALL">(Semua)</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="filterUser" class="block text-[11px] font-semibold text-slate-500 mb-1">User / PIC</label>
+          <select id="filterUser" class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="ALL">(Semua)</option>
           </select>
         </div>
@@ -359,6 +366,31 @@
           <span>Kontribusi HPP komersial per kategori barang</span>
           <span id="kategoriTotalLabel" class="font-semibold text-slate-600">Rp 0</span>
         </div>
+      </div>
+    </section>
+
+    <!-- ROW 2.5: TRANSAKSI PER USER -->
+    <section class="card-surface p-4 sm:p-5 space-y-4">
+      <div class="flex items-start justify-between gap-2">
+        <div>
+          <h2 class="text-base sm:text-lg font-bold text-slate-900">Transaksi per User (Komersial)</h2>
+          <p class="text-xs text-slate-500">Distribusi jumlah transaksi (PO/baris), nilai HPP Exclude PPN, dan margin per user/PIC</p>
+        </div>
+        <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100 shrink-0">
+          ● Per User
+        </span>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-center">
+        <div class="lg:col-span-7 chart-box h-[240px] sm:h-[260px]">
+          <canvas id="chartUserTx"></canvas>
+        </div>
+        <div id="userTxCardsGrid" class="lg:col-span-5 grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[260px] overflow-y-auto pr-1"></div>
+      </div>
+
+      <div class="pt-2 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-[11px] text-slate-400">
+        <span id="userColSourceLabel">Sumber kolom user: otomatis terdeteksi</span>
+        <span id="userTxSummaryLabel" class="font-semibold text-slate-600">0 User • 0 Transaksi</span>
       </div>
     </section>
 
@@ -731,7 +763,20 @@
           c => c === "HARGA JUAL"
         ]),
         tglGrn: findCol(cols, [c => c === "TGL GRN", c => c.includes("GRN") && c.startsWith("TGL")]),
-        tglTerima: findCol(cols, [c => c === "TGL CUST TERIMA", c => c.includes("TGL TERIMA"), c => c.includes("TERIMA")])
+        tglTerima: findCol(cols, [c => c === "TGL CUST TERIMA", c => c.includes("TGL TERIMA"), c => c.includes("TERIMA")]),
+        userProc: findCol(cols, [
+          c => c === "USER",
+          c => c === "PIC",
+          c => c === "PIC PROCUREMENT",
+          c => c === "BUYER",
+          c => c === "PURCHASING",
+          c => c === "ADMIN",
+          c => c === "CREATED BY",
+          c => c.includes("USER"),
+          c => c.includes("PIC"),
+          c => c.includes("BUYER"),
+          c => c.includes("PURCHASING")
+        ])
       };
     }
 
@@ -817,20 +862,24 @@
       const perSel = document.getElementById("filterPeriode");
       const katSel = document.getElementById("filterKategori");
       const venSel = document.getElementById("filterVendor");
+      const usrSel = document.getElementById("filterUser");
 
       const prevPer = perSel.value;
       const prevKat = katSel.value;
       const prevVen = venSel.value;
+      const prevUsr = usrSel.value;
 
       const monthKeys = new Set();
       const kats = new Set();
       const vends = new Set();
+      const users = new Set();
 
       state.orderRows.forEach(r => {
         const dt = getRowDate(r, sc);
         if (dt) monthKeys.add(getMonthKey(dt));
         if (sc.kategoriBarang && hasValue(r[sc.kategoriBarang])) kats.add(String(r[sc.kategoriBarang]).trim());
         if (sc.vendor && hasValue(r[sc.vendor])) vends.add(String(r[sc.vendor]).trim());
+        if (sc.userProc && hasValue(r[sc.userProc])) users.add(String(r[sc.userProc]).trim());
       });
 
       const sortedMonths = [...monthKeys].sort();
@@ -843,9 +892,13 @@
       venSel.innerHTML = `<option value="ALL">(Semua)</option>` +
         [...vends].sort().map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join("");
 
+      usrSel.innerHTML = `<option value="ALL">(Semua)</option>` +
+        [...users].sort().map(u => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join("");
+
       if ([...perSel.options].some(o => o.value === prevPer)) perSel.value = prevPer;
       if ([...katSel.options].some(o => o.value === prevKat)) katSel.value = prevKat;
       if ([...venSel.options].some(o => o.value === prevVen)) venSel.value = prevVen;
+      if ([...usrSel.options].some(o => o.value === prevUsr)) usrSel.value = prevUsr;
     }
 
     function applyFilters() {
@@ -853,6 +906,7 @@
       const per = document.getElementById("filterPeriode").value;
       const kat = document.getElementById("filterKategori").value;
       const ven = document.getElementById("filterVendor").value;
+      const usr = document.getElementById("filterUser").value;
       const stPo = document.getElementById("filterStatusPo").value;
       const kw = document.getElementById("filterKeyword").value.trim().toLowerCase();
 
@@ -863,6 +917,7 @@
         }
         if (kat !== "ALL" && sc.kategoriBarang && String(row[sc.kategoriBarang] || "").trim() !== kat) return false;
         if (ven !== "ALL" && sc.vendor && String(row[sc.vendor] || "").trim() !== ven) return false;
+        if (usr !== "ALL" && sc.userProc && String(row[sc.userProc] || "").trim() !== usr) return false;
         if (stPo !== "ALL" && classifyPoStatus(row, sc) !== stPo) return false;
         if (kw) {
           const hay = Object.values(row).join(" ").toLowerCase();
@@ -925,6 +980,7 @@
       };
 
       const katMap = new Map();
+      const userMap = new Map();
       const bpvMap = new Map();
       BPV_STATUS_ORDER.forEach(st => bpvMap.set(st, { label: st, value: 0, count: 0 }));
 
@@ -957,6 +1013,18 @@
         const kEntry = katMap.get(katName);
         kEntry.hpp += hpp;
         kEntry.jual += jual;
+
+        const userName = sc.userProc && hasValue(r[sc.userProc])
+          ? String(r[sc.userProc]).trim().toUpperCase()
+          : "TANPA USER / PIC";
+        if (!userMap.has(userName)) {
+          userMap.set(userName, { name: userName, txCount: 0, poSet: new Set(), hpp: 0, jual: 0 });
+        }
+        const uEntry = userMap.get(userName);
+        uEntry.txCount += 1;
+        if (sc.noPo && hasValue(r[sc.noPo])) uEntry.poSet.add(String(r[sc.noPo]).trim());
+        uEntry.hpp += hpp;
+        uEntry.jual += jual;
 
         if (isItemOutstanding(r, sc)) {
           totalOut += hpp;
@@ -1233,6 +1301,95 @@
 
       document.getElementById("bpvTotalOutstandingLabel").textContent = `Total Outstanding: ${formatRupiah(totalOut)}`;
 
+      const userSorted = [...userMap.values()].sort((a, b) => b.txCount - a.txCount || b.hpp - a.hpp);
+      const userColors = ["#4f46e5", "#0ea5e9", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6", "#14b8a6", "#f97316"];
+      const userLabels = userSorted.length ? userSorted.map(u => u.name) : ["Belum Ada Data User"];
+      const userTxCounts = userSorted.length ? userSorted.map(u => u.txCount) : [0];
+      const userBarColors = userLabels.map((_, idx) => userColors[idx % userColors.length]);
+
+      upsertChart("userTx", "chartUserTx", {
+        type: "bar",
+        data: {
+          labels: userLabels,
+          datasets: [{
+            label: "Jumlah Transaksi (Baris)",
+            data: userTxCounts,
+            backgroundColor: userBarColors,
+            borderRadius: 6,
+            maxBarThickness: 26
+          }]
+        },
+        options: {
+          indexAxis: "y",
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => {
+                  const uObj = userSorted[ctx.dataIndex];
+                  if (!uObj) return ` ${formatNumber(ctx.parsed.x)} transaksi`;
+                  return ` ${formatNumber(uObj.txCount)} transaksi (${formatNumber(uObj.poSet.size)} PO) • HPP ${formatRupiah(uObj.hpp)}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              beginAtZero: true,
+              grid: { color: "#f1f5f9" },
+              ticks: {
+                color: "#64748b",
+                font: { size: 11 },
+                precision: 0,
+                callback: v => formatNumber(v)
+              }
+            },
+            y: {
+              grid: { display: false },
+              ticks: { color: "#1e293b", font: { size: 11, weight: 600 } }
+            }
+          }
+        }
+      });
+
+      const userCardsEl = document.getElementById("userTxCardsGrid");
+      const totalTxCommercial = rows.length;
+      if (!userSorted.length) {
+        userCardsEl.innerHTML = `<div class="col-span-2 text-xs text-slate-400 text-center py-6">Tidak ada transaksi komersial per user.</div>`;
+      } else {
+        userCardsEl.innerHTML = userSorted.map((u, idx) => {
+          const shareTx = totalTxCommercial > 0 ? (u.txCount / totalTxCommercial) * 100 : 0;
+          const dotCol = userColors[idx % userColors.length];
+          const uMargin = u.jual - u.hpp;
+          const uMarginPct = u.jual > 0 ? (uMargin / u.jual) * 100 : 0;
+          return `
+            <div class="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+              <div class="flex items-center justify-between gap-1.5 text-xs font-bold text-slate-800">
+                <span class="flex items-center gap-1.5 truncate">
+                  <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color:${dotCol}"></span>
+                  <span class="truncate">${escapeHtml(u.name)}</span>
+                </span>
+                <span class="text-[11px] font-semibold text-indigo-700 shrink-0">${shareTx.toFixed(1).replace(".", ",")}%</span>
+              </div>
+              <div class="text-xs sm:text-sm font-extrabold text-slate-900 mt-1">
+                ${formatNumber(u.txCount)} Transaksi <span class="text-[11px] font-semibold text-slate-500">(${formatNumber(u.poSet.size)} PO)</span>
+              </div>
+              <div class="text-[11px] text-slate-500 mt-0.5 truncate">
+                HPP: ${formatCompactRupiah(u.hpp)} • Mrg ${uMarginPct.toFixed(1).replace(".", ",")}%
+              </div>
+            </div>
+          `;
+        }).join("");
+      }
+
+      document.getElementById("userColSourceLabel").textContent = sc.userProc
+        ? `Sumber kolom user: ${sc.userProc}`
+        : "Kolom user/PIC belum ditemukan di sheet (menampilkan TANPA USER / PIC)";
+      document.getElementById("userTxSummaryLabel").textContent =
+        `${formatNumber(userSorted.length)} User • ${formatNumber(totalTxCommercial)} Transaksi`;
+
       renderInternalSection(internalRows, sc);
       renderTransactionTable(rows, sc);
     }
@@ -1433,7 +1590,7 @@
       showStatusBanner("Berhasil mengekspor data komersial terfilter ke CSV.", "success");
     }
 
-    ["filterPeriode", "filterKategori", "filterVendor", "filterStatusPo", "filterKeyword"].forEach(id => {
+    ["filterPeriode", "filterKategori", "filterVendor", "filterUser", "filterStatusPo", "filterKeyword"].forEach(id => {
       document.getElementById(id).addEventListener("input", renderDashboard);
       document.getElementById(id).addEventListener("change", renderDashboard);
     });
@@ -1442,6 +1599,7 @@
       document.getElementById("filterPeriode").value = "ALL";
       document.getElementById("filterKategori").value = "ALL";
       document.getElementById("filterVendor").value = "ALL";
+      document.getElementById("filterUser").value = "ALL";
       document.getElementById("filterStatusPo").value = "ALL";
       document.getElementById("filterKeyword").value = "";
       renderDashboard();
